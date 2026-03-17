@@ -1,0 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Navy Blue background */
+    --background: 225 40% 12%;
+    --foreground: 48 20% 92%;
+
+    --card: 225 40% 15%;
+    --card-foreground: 48 20% 92%;
+
+    --popover: 225 40% 15%;
+    --popover-foreground: 48 20% 92%;
+
+    /* Lime Yellowish Green */
+    --primary: 57 100% 47.9%;
+    --primary-foreground: 210 15% 11%;
+    /* Keep text black */
+
+    --secondary: 225 40% 18%;
+    --secondary-foreground: 48 20% 92%;
+
+    --muted: 225 30% 16%;
+    --muted-foreground: 225 20% 65%;
+
+    --accent: 48 80% 48%;
+    --accent-foreground: 210 15% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 225 30% 20%;
+    --input: 225 30% 20%;
+    --ring: 57 100% 47.9%;
+
+    --radius: 0.5rem;
+
+    /* Blue accent from the card divider line & WEAR box */
+    --blue-accent: 205 78% 45%;
+
+    --sidebar-background: 225 40% 10%;
+    --sidebar-foreground: 48 15% 85%;
+    --sidebar-primary: 57 100% 47.9%;
+    --sidebar-primary-foreground: 210 15% 11%;
+    --sidebar-accent: 225 40% 16%;
+    --sidebar-accent-foreground: 48 20% 92%;
+    --sidebar-border: 225 30% 18%;
+    --sidebar-ring: 57 100% 47.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(57 100% 47.9%), hsl(45 100% 50%));
+  }
+
+  .bg-gradient-gold {
+    background-image: linear-gradient(135deg, hsl(57 100% 47.9%), hsl(50 100% 40%));
+  }
+
+  .bg-gradient-navy {
+    background-image: linear-gradient(180deg, hsl(225 40% 12%), hsl(225 45% 8%));
+  }
+
+  .shadow-gold {
+    box-shadow: 0 4px 30px -5px hsl(57 100% 47.9% / 0.25);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 20px hsl(57 100% 47.9% / 0.3), 0 0 60px hsl(57 100% 47.9% / 0.1);
+  }
+
+  .border-blue-accent {
+    border-color: hsl(205 78% 45%);
+  }
+
+  .bg-blue-accent {
+    background-color: hsl(205 78% 45%);
+  }
+
+  .text-blue-accent {
+    color: hsl(205 78% 45%);
+  }
+}
