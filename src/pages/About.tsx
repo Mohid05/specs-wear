@@ -36,13 +36,16 @@ export default function About() {
                 <div className="flex items-start gap-2">
                   <span className="text-primary">📞</span>
                   <div className="flex flex-col leading-tight">
-                    <span>{storeInfo.phone1}</span>
-                    <span>{storeInfo.phone2}</span>
+                    {storeInfo.phones?.map((p, i) => <span key={`phone-${i}`}>{p}</span>)}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-primary">✉️</span>
-                  <span>{storeInfo.email}</span>
+                <div className="flex flex-col gap-1">
+                  {storeInfo.emails?.map((email, i) => (
+                    <div key={`email-${i}`} className="flex items-center gap-2">
+                      <span className="text-primary">✉️</span>
+                      <span>{email}</span>
+                    </div>
+                  ))}
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-primary mt-0.5">📍</span>

@@ -10,7 +10,6 @@ const navLinks = [
   { label: "Home", path: "/" },
   { label: "Catalog", path: "/catalog" },
   { label: "About Us", path: "/about" },
-  { label: "Store Location", path: "/location" },
   { label: "Contact", path: "/contact" },
 ];
 
@@ -58,12 +57,6 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-          
-            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="bg-gradient-gold text-primary-foreground gap-1.5 shadow-gold hover:opacity-90">
-                <MessageCircle className="h-4 w-4" /> WhatsApp
-              </Button>
-            </a>
           </div>
         </div>
 
@@ -90,9 +83,6 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
-            <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="mt-2">
-              <Button className="w-full bg-gradient-gold text-primary-foreground gap-1.5"><MessageCircle className="h-4 w-4" /> WhatsApp Us</Button>
-            </a>
           </div>
         </div>
       )}

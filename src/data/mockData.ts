@@ -7,6 +7,8 @@ export interface Product {
   image: string;
   description: string;
   specs: { label: string; value: string }[];
+  stock_quantity?: number;
+  is_out_of_stock?: boolean;
 }
 
 export const products: Product[] = [
@@ -34,16 +36,23 @@ export const products: Product[] = [
   { id: 22, name: "Navigator Pro", price: 6800, category: "sunglasses", gender: "men", image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=400&fit=crop", description: "Square navigator style shades with premium polarized coating.", specs: [{ label: "Material", value: "Stainless Steel" }, { label: "UV Protection", value: "UV400" }, { label: "Lens Width", value: "57mm" }, { label: "Polarized", value: "Yes" }] }
 ];
 
-export const storeInfo = {
-  phone1: "0309 04 111 66",
-  phone2: "0313 60 640 67",
-  email: "specswear23@gmail.com",
+const defaultStoreInfo = {
+  phones: ["0309 04 111 66", "0313 60 640 67"],
+  emails: ["specswear23@gmail.com"],
   address: "Servaid Pharmacy, Plaza No 7, Shaheen Commercial, Opposite Bahria International Hospital, Lahore.",
   whatsapp: "923090411166",
   owner: "Ahmad Shahzad",
   ownerTitle: "Proprietor",
   tagline: "SPECS WEAR | SEE CLEAR",
 };
+
+export const storeInfo = (() => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem("admin_store_info");
+    if (saved) return { ...defaultStoreInfo, ...JSON.parse(saved) };
+  }
+  return defaultStoreInfo;
+})();
 
 export const testimonials = [
   { name: "Ali Hassan", text: "SPECS WEAR gave me the perfect pair of glasses. The quality and service are unmatched in Lahore!", rating: 5 },

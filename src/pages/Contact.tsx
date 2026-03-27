@@ -42,7 +42,7 @@ export default function Contact() {
             <h3 className="font-display text-xl font-bold text-foreground">Visit Our Store</h3>
             <p className="mt-2 text-muted-foreground">{storeInfo.address}</p>
             <p className="mt-1 text-muted-foreground">Mon – Sat: 10 AM – 9 PM | Sunday: 12 PM – 7 PM</p>
-            <p className="mt-1 text-muted-foreground">{storeInfo.phone1} | {storeInfo.phone2}</p>
+            <p className="mt-1 text-muted-foreground">{storeInfo.phones?.join(' | ')}</p>
           </div>
         </div>
       </div>

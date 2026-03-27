@@ -1,42 +1,306 @@
-import { products } from "@/data/mockData";
+import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft, Search } from "lucide-react";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import type { Product } from "@/data/mockData";
 
 export default function AdminProducts() {
+  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const categoryFilter = searchParams.get('category');
+  
+  const [editingId, setEditingId] = useState<number | 'new' | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['admin-products'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('*').order('id', { ascending: true });
+      if (error) throw error;
+      return data as Product[];
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      toast.success("Product deleted successfully");
+    },
+    onError: (err) => toast.error(`Error deleting product: ${err.message}`)
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (product: Partial<Product>) => {
+      if (editingId === 'new') {
+        const { id, ...newProduct } = product;
+        
+        // Find the absolute highest ID currently in the database
+        const { data: maxRecord } = await supabase.from('products').select('id').order('id', { ascending: false }).limit(1);
+        const nextId = maxRecord && maxRecord.length > 0 ? Number(maxRecord[0].id) + 1 : 1;
+        
+        const { error } = await supabase.from('products').insert({
+          id: nextId,
+          ...newProduct,
+          specs: newProduct.specs || [] // ensure JSONB array
+        });
+        if (error) throw error;
+      } else {
+        const { id, ...updates } = product;
+        const { error } = await supabase.from('products').update(updates).eq('id', id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      setEditingId(null);
+      toast.success(`Product ${editingId === 'new' ? 'added' : 'updated'} successfully`);
+    },
+    onError: (err) => toast.error(`Error saving product: ${err.message}`)
+  });
+
+  const handleDelete = (id: number) => {
+    if (window.confirm("Are you sure you want to delete this product?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleEdit = (p: Product) => {
+    setEditingId(p.id);
+    setRemoveImage(false);
+  };
+
+  if (editingId !== null) {
+    const product = editingId === 'new' 
+      ? { name: '', price: 0, category: 'frames', gender: 'unisex', image: '', description: '', stock_quantity: 10, is_out_of_stock: false, specs: [] } as Partial<Product>
+      : products.find(p => p.id === editingId) || {} as Partial<Product>;
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const fd = new FormData(e.currentTarget);
+      const stockVal = Math.max(0, Number(fd.get('stock'))); // prevent negative
+      const isManualOutOfStock = fd.get('outOfStock') === 'true';
+
+      // Advanced Image Handling (Base64)
+      let finalImage = product.image || ""; // Truly blank fallback
+      const imageFile = fd.get('imageFile') as File;
+      
+      if (imageFile && imageFile.size > 0) {
+        // Convert the local file into a Base64 string to securely save in the database
+        const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+        finalImage = await toBase64(imageFile);
+      } else if (removeImage) {
+        finalImage = "";
+      }
+
+      // Build specs
+      const specs = [
+        { label: 'Material', value: fd.get('spec_material') as string || '' },
+        { label: 'Weight', value: fd.get('spec_weight') as string || '' },
+        { label: 'Lens Width', value: fd.get('spec_lens_width') as string || '' },
+        { label: 'Bridge', value: fd.get('spec_bridge') as string || '' },
+      ];
+
+      saveMutation.mutate({
+        ...product,
+        name: fd.get('name') as string,
+        price: Number(fd.get('price')),
+        category: fd.get('category') as any,
+        gender: fd.get('gender') as any,
+        image: finalImage,
+        description: fd.get('description') as string,
+        stock_quantity: stockVal,
+        is_out_of_stock: stockVal === 0 ? true : isManualOutOfStock,
+        specs: specs
+      });
+    };
+
+    return (
+      <div>
+        <div className="mb-6 flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => {
+            setEditingId(null);
+            setRemoveImage(false);
+          }}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="font-display text-2xl font-bold">{editingId === 'new' ? 'Add New Product' : 'Edit Product'}</h1>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="max-w-2xl rounded-xl border border-border bg-card p-6 gap-6 grid">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Name</label>
+              <Input name="name" defaultValue={product.name} required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Price (Rs)</label>
+              <Input name="price" type="number" defaultValue={product.price} required />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Category</label>
+              <select name="category" defaultValue={product.category} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                <option value="frames">Frames</option>
+                <option value="sunglasses">Sunglasses</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Gender</label>
+              <select name="gender" defaultValue={product.gender} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background disabled:cursor-not-allowed disabled:opacity-50">
+                <option value="unisex">Unisex</option>
+                <option value="men">Men</option>
+                <option value="women">Women</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Stock Quantity</label>
+              <Input name="stock" type="number" min="0" defaultValue={product.stock_quantity ?? 10} required />
+            </div>
+            <div className="space-y-2 col-span-2 sm:col-span-1">
+              <label className="text-sm font-medium">Status</label>
+              <select name="outOfStock" defaultValue={product.is_out_of_stock ? 'true' : 'false'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="false">In Stock</option>
+                <option value="true">Out of Stock</option>
+              </select>
+            </div>
+            
+            <div className="space-y-4 col-span-2 pt-4 border-t border-border">
+              <h3 className="font-display font-semibold">Specifications</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Material</label>
+                  <Input name="spec_material" placeholder="e.g. Acetate" defaultValue={product.specs?.find((s:any) => s.label === 'Material')?.value || ''} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Weight</label>
+                  <Input name="spec_weight" placeholder="e.g. 28g" defaultValue={product.specs?.find((s:any) => s.label === 'Weight')?.value || ''} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Lens Width</label>
+                  <Input name="spec_lens_width" placeholder="e.g. 50mm" defaultValue={product.specs?.find((s:any) => s.label === 'Lens Width')?.value || ''} />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Bridge</label>
+                  <Input name="spec_bridge" placeholder="e.g. 20mm" defaultValue={product.specs?.find((s:any) => s.label === 'Bridge')?.value || ''} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 col-span-2 pt-4 border-t border-border">
+              <label className="text-sm font-medium">Product Image {editingId !== 'new' && '(Leave empty to keep current)'}</label>
+              {editingId !== 'new' && product.image && !removeImage && (
+                <div className="mb-2 flex items-end gap-4">
+                  <img src={product.image} alt="Current" className="h-20 w-20 rounded object-cover border border-border" />
+                  <Button type="button" variant="destructive" size="sm" onClick={() => setRemoveImage(true)}>Remove Image</Button>
+                </div>
+              )}
+              {removeImage && <p className="text-sm text-destructive font-medium mb-2">Image will be removed upon saving.</p>}
+              <Input name="imageFile" type="file" accept="image/*" className="cursor-pointer" />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <label className="text-sm font-medium">Description</label>
+              <textarea name="description" defaultValue={product.description} required className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <Button type="submit" className="w-full" disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? 'Saving...' : 'Save Product'}
+          </Button>
+        </form>
+      </div>
+    );
+  }
+
+  const displayedProducts = products.filter((p) => {
+    const matchesCategory = categoryFilter ? p.category.toLowerCase() === categoryFilter.toLowerCase() : true;
+    const matchesSearch = searchTerm ? p.name.toLowerCase().includes(searchTerm.toLowerCase()) : true;
+    return matchesCategory && matchesSearch;
+  });
+
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold text-foreground">Products</h1>
-        <Button size="sm" className="bg-gradient-gold text-primary-foreground gap-1.5"><Plus className="h-4 w-4" /> Add Product</Button>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            {categoryFilter ? `Products: ${categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)}` : 'All Products'}
+          </h1>
+          {categoryFilter && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Currently filtering by category. <a href="/admin/products" className="text-primary hover:underline">Clear filter</a>
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search products..." 
+              className="pl-9 w-[200px] lg:w-[300px]" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button size="sm" onClick={() => { setEditingId('new'); setRemoveImage(false); }} className="bg-gradient-gold text-primary-foreground gap-1.5 shrink-0">
+            <Plus className="h-4 w-4" /> Add Product
+          </Button>
+        </div>
       </div>
       <div className="mt-6 overflow-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-secondary text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Image</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Name</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Category</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Price</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => (
-              <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                <td className="px-4 py-3"><img src={p.image} alt={p.name} className="h-10 w-10 rounded object-cover" /></td>
-                <td className="px-4 py-3 font-medium text-foreground">{p.name}</td>
-                <td className="px-4 py-3 capitalize text-muted-foreground">{p.category}</td>
-                <td className="px-4 py-3 text-primary font-medium">Rs. {p.price.toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-2">
-                    <button className="text-muted-foreground hover:text-primary transition-colors"><Pencil className="h-4 w-4" /></button>
-                    <button className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </td>
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading products from database...</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-secondary text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Image</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Name</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Stock / Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Price</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {displayedProducts.map((p) => (
+                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                  <td className="px-4 py-3">
+                    {p.image ? (
+                      <img src={p.image} alt={p.name} className="h-10 w-10 rounded object-cover border border-border" />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-secondary flex items-center justify-center text-muted-foreground text-[10px] border border-border">N/A</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-foreground">{p.name}</td>
+                  <td className="px-4 py-3">
+                    {p.is_out_of_stock ? (
+                      <span className="text-destructive font-medium">Out of stock</span>
+                    ) : (
+                      <span className="text-muted-foreground">{p.stock_quantity ?? 10} in stock</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-primary font-medium">Rs. {p.price.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(p)} className="text-muted-foreground hover:text-primary transition-colors"><Pencil className="h-4 w-4" /></button>
+                      <button onClick={() => handleDelete(p.id)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

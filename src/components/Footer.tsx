@@ -30,7 +30,6 @@ export default function Footer() {
               {[
                 { to: "/catalog", label: "Catalog" },
                 { to: "/about", label: "About Us" },
-                { to: "/location", label: "Store Location" },
                 { to: "/contact", label: "Contact" },
                 { to: "/privacy", label: "Privacy Policy" },
               ].map((link) => (
@@ -47,9 +46,12 @@ export default function Footer() {
             <h4 className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Contact</h4>
             <div className="flex flex-col gap-4 text-sm text-muted-foreground">
               <span className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{storeInfo.address}</span>
-              <span className="flex items-center gap-3"><Phone className="h-4 w-4 text-primary" />{storeInfo.phone1}</span>
-              <span className="flex items-center gap-3"><Phone className="h-4 w-4 text-primary" />{storeInfo.phone2}</span>
-              <span className="flex items-center gap-3"><Mail className="h-4 w-4 text-primary" />{storeInfo.email}</span>
+              {storeInfo.phones?.map((phone, i) => (
+                <span key={`f-phone-${i}`} className="flex items-center gap-3"><Phone className="h-4 w-4 text-primary" />{phone}</span>
+              ))}
+              {storeInfo.emails?.map((email, i) => (
+                <span key={`f-email-${i}`} className="flex items-center gap-3"><Mail className="h-4 w-4 text-primary" />{email}</span>
+              ))}
             </div>
           </div>
 
@@ -61,7 +63,7 @@ export default function Footer() {
               <span className="ml-7">Sunday: 12 PM – 7 PM</span>
             </div>
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
-              <iframe title="SPECS WEAR Location" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3401.0!2d74.35!3d31.52!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMzHCsDMxJzEyLjAiTiA3NMKwMjEnMDAuMCJF!5e0!3m2!1sen!2spk!4v1700000000000" width="100%" height="130" style={{ border: 0 }} loading="lazy" />
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d250.30746216104185!2d74.19025585434322!3d31.387091370237027!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3918ff1cffc322f7%3A0x4269f3fed1fb47!2sServaid%20Pharmacy!5e1!3m2!1sen!2s!4v1774650029367!5m2!1sen!2s" width="600" height="200" style={{ border: '0' }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
             </div>
           </div>
         </div>

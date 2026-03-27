@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/mockData";
+import { useProducts } from "@/hooks/useProducts";
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -13,6 +13,7 @@ export default function Catalog() {
   const [category, setCategory] = useState(initCat);
   const [gender, setGender] = useState(initGender);
   const [search, setSearch] = useState("");
+  const { data: products = [], isLoading, error } = useProducts();
 
   // Sync state with URL params
   useEffect(() => {
@@ -94,7 +95,11 @@ export default function Catalog() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="mt-16 flex justify-center text-muted-foreground">Loading products...</div>
+      ) : error ? (
+        <div className="mt-16 text-center text-destructive">Error loading products.</div>
+      ) : filtered.length === 0 ? (
         <p className="mt-16 text-center text-muted-foreground">No products found.</p>
       ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

@@ -1,21 +1,59 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { useState } from "react";
-import { LayoutDashboard, Package, Tags, MessageSquare, Image, Settings, Users, Menu, X, LogOut } from "lucide-react";
+import { Link, Outlet, useLocation, Navigate, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { LayoutDashboard, Package, Tags, MessageSquare, Image, Settings, Users, Menu, X, LogOut, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import SpecsLogo from "@/components/SpecsLogo";
 
 const adminLinks = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { label: "Products", path: "/admin/products", icon: Package },
   { label: "Categories", path: "/admin/categories", icon: Tags },
-  { label: "Inquiries", path: "/admin/inquiries", icon: MessageSquare },
-  { label: "Media", path: "/admin/media", icon: Image },
   { label: "Settings", path: "/admin/settings", icon: Settings },
-  { label: "Users", path: "/admin/users", icon: Users },
 ];
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const isAdmin = localStorage.getItem("isAdmin") === "true";
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    let timeoutId: NodeJS.Timeout;
+    const resetTimer = () => {
+      clearTimeout(timeoutId);
+      // 5 minutes
+      timeoutId = setTimeout(() => {
+        localStorage.removeItem("isAdmin");
+        navigate("/admin/login");
+        toast.info("Logged out due to 5 minutes of inactivity");
+      }, 300000);
+    };
+
+    window.addEventListener("mousemove", resetTimer);
+    window.addEventListener("keypress", resetTimer);
+    window.addEventListener("scroll", resetTimer);
+    window.addEventListener("click", resetTimer);
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("mousemove", resetTimer);
+      window.removeEventListener("keypress", resetTimer);
+      window.removeEventListener("scroll", resetTimer);
+      window.removeEventListener("click", resetTimer);
+    };
+  }, [isAdmin, navigate]);
+
+  if (!isAdmin) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAdmin");
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -32,10 +70,16 @@ export default function AdminLayout() {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto border-t border-border p-3">
+        <div className="mt-auto border-t border-border p-3 flex flex-col gap-1">
           <Link to="/" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
-            <LogOut className="h-4 w-4" /> Back to Site
+            <ArrowLeft className="h-4 w-4" /> Back to Website
           </Link>
+          <button onClick={() => {
+            handleLogout();
+            navigate("/admin/login");
+          }} className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors text-left">
+            <LogOut className="h-4 w-4" /> Logout
+          </button>
         </div>
       </aside>
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-background/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}

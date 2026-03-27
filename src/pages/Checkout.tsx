@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
 export default function Checkout() {
   const { items, removeFromCart, updateQuantity, cartTotal, clearCart } = useCart();
@@ -12,17 +13,55 @@ export default function Checkout() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const customerName = `${formData.get('firstName')} ${formData.get('lastName')}`;
+      const customerEmail = formData.get('email') as string;
+      const customerPhone = formData.get('phone') as string;
+      const shippingAddress = `${formData.get('address')}, ${formData.get('city')} ${formData.get('zip')}`;
+
+      // 1. Insert order
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          customer_name: customerName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
+          shipping_address: shippingAddress,
+          total_amount: cartTotal,
+          status: 'pending'
+        })
+        .select('id')
+        .single();
+        
+      if (orderError) throw orderError;
+      
+      // 2. Insert order items
+      const orderItems = items.map(item => ({
+        order_id: orderData.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        unit_price: item.price
+      }));
+      
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+        
+      if (itemsError) throw itemsError;
+
       setOrderComplete(true);
       clearCart();
       toast.success("Order placed successfully!");
-    }, 1500);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to place order.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (orderComplete) {
@@ -76,7 +115,14 @@ export default function Checkout() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold">{item.name}</h3>
-                    <p className="text-sm text-muted-foreground capitalize">{item.category}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm text-muted-foreground capitalize">{item.category}</p>
+                      {item.stock_quantity !== undefined && (
+                        <span className="inline-block rounded-full bg-green-600/10 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
+                          {item.stock_quantity} left
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm font-medium text-primary mt-1">Rs. {item.price.toLocaleString()}</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -124,17 +170,17 @@ export default function Checkout() {
             <div className="space-y-4 mb-8">
               <h3 className="font-medium">Contact Details</h3>
               <div className="grid grid-cols-2 gap-4">
-                <Input required placeholder="First Name" />
-                <Input required placeholder="Last Name" />
+                <Input required name="firstName" placeholder="First Name" />
+                <Input required name="lastName" placeholder="Last Name" />
               </div>
-              <Input required type="email" placeholder="Email Address" />
-              <Input required type="tel" placeholder="Phone Number (WhatsApp)" />
+              <Input required type="email" name="email" placeholder="Email Address" />
+              <Input required type="tel" name="phone" placeholder="Phone Number (WhatsApp)" />
               
               <h3 className="font-medium mt-6">Shipping Address</h3>
-              <Input required placeholder="Street Address" />
+              <Input required name="address" placeholder="Street Address" />
               <div className="grid grid-cols-2 gap-4">
-                <Input required placeholder="City" />
-                <Input required placeholder="Zip Code" />
+                <Input required name="city" placeholder="City" />
+                <Input required name="zip" placeholder="Zip Code" />
               </div>
             </div>
 
