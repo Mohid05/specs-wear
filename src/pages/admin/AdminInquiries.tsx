@@ -27,6 +27,7 @@ export default function AdminInquiries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-unread-count'] });
       toast.success("Message deleted successfully");
     },
     onError: (err) => {
@@ -41,6 +42,7 @@ export default function AdminInquiries() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-unread-count'] });
     }
   });
 

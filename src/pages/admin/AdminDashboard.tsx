@@ -19,10 +19,24 @@ export default function AdminDashboard() {
       return data;
     }
   });
+  
+  // Fetch unread inquiries
+  const { data: inquiries = [] } = useQuery({
+    queryKey: ['admin-unread-count'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .eq('status', 'unread');
+      if (error) throw error;
+      return data;
+    }
+  });
 
   // Analytics based on live orders
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const newInquiries = inquiries.length;
   const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
 
   const deleteMutation = useMutation({
@@ -71,6 +85,13 @@ export default function AdminDashboard() {
             <Clock className="h-5 w-5 text-orange-500" />
           </div>
           <p className="mt-2 text-3xl font-bold text-foreground">{pendingOrders}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">New Inquiries</p>
+            <MessageSquare className="h-5 w-5 text-orange-500" />
+          </div>
+          <p className="mt-2 text-3xl font-bold text-foreground">{newInquiries}</p>
         </div>
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">

@@ -2,6 +2,8 @@ import { Link, Outlet, useLocation, Navigate, useNavigate } from "react-router-d
 import { useState, useEffect } from "react";
 import { LayoutDashboard, Package, Tags, MessageSquare, Image, Settings, Users, Menu, X, LogOut, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import SpecsLogo from "@/components/SpecsLogo";
 
 const adminLinks = [
@@ -16,6 +18,23 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
+
+  // Fetch unread inquiries list (unified with Dashboard for cache sync)
+  const { data: unreadInquiries = [] } = useQuery({
+    queryKey: ['admin-unread-count'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .eq('status', 'unread');
+      
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = unreadInquiries.length;
 
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
@@ -87,8 +106,15 @@ export default function AdminLayout() {
         <nav className="flex flex-col gap-1 p-3">
           {adminLinks.map((l) => (
             <Link key={l.path} to={l.path} onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${pathname === l.path ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
-              <l.icon className="h-4 w-4" /> {l.label}
+              className={`flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${pathname === l.path ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+              <div className="flex items-center gap-3">
+                <l.icon className="h-4 w-4" /> {l.label}
+              </div>
+              {l.label === "Inquiries" && unreadCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shadow-sm">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -106,9 +132,18 @@ export default function AdminLayout() {
       </aside>
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-background/50 lg:hidden" onClick={() => setSidebarOpen(false)} />}
       <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center gap-4 border-b border-border px-4 lg:px-6">
-          <button className="lg:hidden text-foreground" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
-          <h2 className="font-display text-lg font-semibold text-foreground">Admin Panel</h2>
+        <header className="flex h-16 items-center justify-between border-b border-border px-4 lg:px-6">
+          <div className="flex items-center gap-4">
+            <button className="lg:hidden text-foreground" onClick={() => setSidebarOpen(true)}><Menu className="h-5 w-5" /></button>
+            <h2 className="font-display text-lg font-semibold text-foreground">Admin Panel</h2>
+          </div>
+          
+          <Link to="/admin/inquiries" className="relative p-2 text-muted-foreground hover:text-primary transition-colors">
+            <MessageSquare className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-card" />
+            )}
+          </Link>
         </header>
         <main className="flex-1 p-4 lg:p-6"><Outlet /></main>
       </div>
