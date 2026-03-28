@@ -1,8 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { Package, MessageSquare, Truck, Clock } from "lucide-react";
+import { Package, MessageSquare, Truck, Trash2, Eye, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -18,6 +27,28 @@ export default function AdminDashboard() {
       if (error) throw error;
       return data;
     }
+  });
+
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch order items with product details
+  const { data: orderItems = [], isLoading: itemsLoading } = useQuery({
+    queryKey: ['admin-order-items', selectedOrder?.id],
+    queryFn: async () => {
+      if (!selectedOrder?.id) return [];
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+          *,
+          products (*)
+        `)
+        .eq('order_id', selectedOrder.id);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedOrder?.id
   });
   
   // Fetch unread inquiries
@@ -53,10 +84,21 @@ export default function AdminDashboard() {
     }
   });
 
+  const handleCancel = (id: string, customer: string) => {
+    if (window.confirm(`Are you sure you want to cancel ${customer}'s order? This will remove it from the database.`)) {
+      deleteMutation.mutate(id);
+    }
+  };
+
   const handleDispatch = (id: string, customer: string) => {
     if (window.confirm(`Are you sure you want to dispatch ${customer}'s order? This will remove it from the database.`)) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleRowClick = (order: any) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
   };
 
   const handleWhatsApp = (phone: string, orderId: string) => {
@@ -79,13 +121,7 @@ export default function AdminDashboard() {
           </div>
           <p className="mt-2 text-3xl font-bold text-foreground">{totalOrders}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Pending Dispatch</p>
-            <Clock className="h-5 w-5 text-orange-500" />
-          </div>
-          <p className="mt-2 text-3xl font-bold text-foreground">{pendingOrders}</p>
-        </div>
+
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">New Inquiries</p>
@@ -121,9 +157,13 @@ export default function AdminDashboard() {
             </thead>
             <tbody>
               {orders.map((order: any) => (
-                <tr key={order.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                <tr 
+                  key={order.id} 
+                  className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer group"
+                  onClick={() => handleRowClick(order)}
+                >
                   <td className="px-4 py-4 min-w-[200px]">
-                    <div className="font-medium text-foreground">{order.customer_name}</div>
+                    <div className="font-medium text-foreground group-hover:text-primary transition-colors">{order.customer_name}</div>
                     <div className="text-muted-foreground text-xs mt-1">{order.customer_email}</div>
                     <div className="text-muted-foreground text-xs">{order.customer_phone}</div>
                   </td>
@@ -136,7 +176,7 @@ export default function AdminDashboard() {
                   <td className="px-4 py-4 font-medium text-primary">
                     Rs. {Number(order.total_amount).toLocaleString()}
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
                       <Button 
                         size="sm" 
@@ -154,6 +194,15 @@ export default function AdminDashboard() {
                       >
                         <Truck className="h-3.5 w-3.5" /> Dispatch
                       </Button>
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        className="gap-1.5"
+                        onClick={() => handleCancel(order.id, order.customer_name)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Cancel
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -162,6 +211,124 @@ export default function AdminDashboard() {
           </table>
         )}
       </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center justify-between">
+              Order Details
+              <Badge variant={selectedOrder?.status === 'pending' ? 'secondary' : 'default'} className="ml-4">
+                {selectedOrder?.status || 'Processing'}
+              </Badge>
+            </DialogTitle>
+            <DialogDescription>
+              Order ID: {selectedOrder?.id}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedOrder && (
+            <div className="grid gap-6 mt-4">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" /> Customer Information
+                  </h3>
+                  <div className="text-sm space-y-1 bg-secondary/30 p-4 rounded-lg border border-border">
+                    <p><span className="text-muted-foreground">Name:</span> {selectedOrder.customer_name}</p>
+                    <p><span className="text-muted-foreground">Email:</span> {selectedOrder.customer_email}</p>
+                    <p><span className="text-muted-foreground">Phone:</span> {selectedOrder.customer_phone}</p>
+                    <p><span className="text-muted-foreground">Date:</span> {new Date(selectedOrder.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-primary" /> Shipping Address
+                  </h3>
+                  <div className="text-sm bg-secondary/30 p-4 rounded-lg border border-border min-h-[100px]">
+                    {selectedOrder.shipping_address}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground">Items Ordered</h3>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-secondary/50 border-b border-border">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-muted-foreground">Product</th>
+                        <th className="px-4 py-2 text-center font-medium text-muted-foreground">Qty</th>
+                        <th className="px-4 py-2 text-right font-medium text-muted-foreground">Price</th>
+                        <th className="px-4 py-2 text-right font-medium text-muted-foreground">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {itemsLoading ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading items...</td>
+                        </tr>
+                      ) : orderItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No items found for this order.</td>
+                        </tr>
+                      ) : (
+                        orderItems.map((item: any) => (
+                          <tr key={item.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded border border-border overflow-hidden bg-white shrink-0">
+                                  {item.products?.image && (
+                                    <img src={item.products.image} alt={item.products.name} className="h-full w-full object-cover" />
+                                  )}
+                                </div>
+                                <span className="font-medium">{item.products?.name || `Product #${item.product_id}`}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">{item.quantity}</td>
+                            <td className="px-4 py-3 text-right">Rs. {Number(item.unit_price).toLocaleString()}</td>
+                            <td className="px-4 py-3 text-right font-medium">Rs. {(item.quantity * item.unit_price).toLocaleString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    <tfoot className="bg-secondary/20 font-bold border-t border-border">
+                      <tr>
+                        <td colSpan={3} className="px-4 py-3 text-right">Total Amount</td>
+                        <td className="px-4 py-3 text-right text-primary">Rs. {Number(selectedOrder.total_amount).toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
+                <Button 
+                  className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90"
+                  onClick={() => {
+                    handleDispatch(selectedOrder.id, selectedOrder.customer_name);
+                    setIsModalOpen(false);
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Truck className="h-4 w-4" /> Dispatch Order
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  className="gap-1.5"
+                  onClick={() => {
+                    handleCancel(selectedOrder.id, selectedOrder.customer_name);
+                    setIsModalOpen(false);
+                  }}
+                  disabled={deleteMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4" /> Cancel Order
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
