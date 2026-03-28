@@ -97,4 +97,26 @@ ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read/update for client-side evaluation
 CREATE POLICY "Allow public read admin_users" ON admin_users FOR SELECT USING (true);
-CREATE POLICY "Allow public update admin_users" ON admin_users FOR UPDATE USING (true);
+-- ==========================================
+-- 5. Create Contact Messages Table
+-- ==========================================
+CREATE TABLE contact_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'responded')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable RLS for contact_messages
+ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
+
+-- Allow anyone to insert contact messages
+CREATE POLICY "Allow public to insert contact messages" ON contact_messages FOR INSERT WITH CHECK (true);
+
+-- Allow admins to read/update contact messages
+CREATE POLICY "Allow public read contact messages" ON contact_messages FOR SELECT USING (true);
+CREATE POLICY "Allow public update contact messages" ON contact_messages FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete contact messages" ON contact_messages FOR DELETE USING (true);

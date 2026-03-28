@@ -1,36 +1,145 @@
-import { inquiries } from "@/data/mockData";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { MessageSquare, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function AdminInquiries() {
+  const queryClient = useQueryClient();
+
+  // Fetch messages from database
+  const { data: messages = [], isLoading } = useQuery({
+    queryKey: ['admin-inquiries'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('contact_messages').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+      toast.success("Message deleted successfully");
+    },
+    onError: (err) => {
+      toast.error(`Error deleting message: ${err.message}`);
+    }
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string, status: string }) => {
+      const { error } = await supabase.from('contact_messages').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-inquiries'] });
+    }
+  });
+
+  const handleWhatsApp = (phone: string, name: string) => {
+    if (!phone) {
+      toast.error("No phone number provided for this contact");
+      return;
+    }
+    const formattedPhone = phone.replace(/\D/g, '');
+    const message = encodeURIComponent(`Hello ${name}! We received your message via SPECS WEAR website...`);
+    window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this message?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const toggleStatus = (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === 'unread' ? 'read' : 'unread';
+    updateStatusMutation.mutate({ id, status: nextStatus });
+  };
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-foreground">Inquiries</h1>
-      <div className="mt-6 overflow-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="border-b border-border bg-secondary text-left">
-            <tr>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Name</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Phone</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Product</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Date</th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {inquiries.map((inq) => (
-              <tr key={inq.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                <td className="px-4 py-3 font-medium text-foreground">{inq.name}</td>
-                <td className="px-4 py-3 text-muted-foreground">{inq.phone}</td>
-                <td className="px-4 py-3 text-muted-foreground">{inq.product}</td>
-                <td className="px-4 py-3 text-muted-foreground">{inq.date}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${inq.status === "New" ? "bg-primary/10 text-primary" : inq.status === "Responded" ? "bg-accent/20 text-accent" : "bg-secondary text-muted-foreground"}`}>
-                    {inq.status}
-                  </span>
-                </td>
+      <h1 className="font-display text-2xl font-bold text-foreground">Customer Inquiries</h1>
+      <p className="text-muted-foreground mt-1">Manage messages sent via the contact form</p>
+
+      <div className="mt-6 overflow-auto rounded-xl border border-border bg-card">
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
+        ) : messages.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">No inquiries found.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-secondary text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Sender Info</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Message</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Date</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {messages.map((msg: any) => (
+                <tr key={msg.id} className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors ${msg.status === 'unread' ? 'bg-primary/5' : ''}`}>
+                  <td className="px-4 py-4 min-w-[180px]">
+                    <div className="font-medium text-foreground">{msg.name}</div>
+                    <div className="text-muted-foreground text-xs mt-1">{msg.email}</div>
+                    <div className="text-muted-foreground text-xs">{msg.phone || 'No phone'}</div>
+                  </td>
+                  <td className="px-4 py-4 min-w-[250px] max-w-md">
+                    <p className="whitespace-pre-wrap text-foreground break-words">{msg.message}</p>
+                  </td>
+                  <td className="px-4 py-4 text-muted-foreground whitespace-nowrap">
+                    {new Date(msg.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4">
+                    <button 
+                      onClick={() => toggleStatus(msg.id, msg.status)}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                        msg.status === 'unread' 
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400' 
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      }`}
+                    >
+                      {msg.status === 'unread' ? <Clock className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
+                      {msg.status === 'unread' ? 'Unread' : 'Read'}
+                    </button>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 gap-1.5"
+                        onClick={() => handleWhatsApp(msg.phone, msg.name)}
+                        disabled={!msg.phone}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(msg.id)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

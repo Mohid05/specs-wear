@@ -8,6 +8,7 @@ const adminLinks = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
   { label: "Products", path: "/admin/products", icon: Package },
   { label: "Categories", path: "/admin/categories", icon: Tags },
+  { label: "Inquiries", path: "/admin/inquiries", icon: MessageSquare },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
@@ -21,29 +22,50 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!isAdmin) return;
     
-    let timeoutId: NodeJS.Timeout;
+    const IDLE_TIMEOUT = 300000; // 5 minutes
+    
     const resetTimer = () => {
-      clearTimeout(timeoutId);
-      // 5 minutes
-      timeoutId = setTimeout(() => {
+      localStorage.setItem("adminLastActivity", Date.now().toString());
+    };
+
+    const checkIdle = () => {
+      const lastActivity = parseInt(localStorage.getItem("adminLastActivity") || "0");
+      const now = Date.now();
+      
+      if (now - lastActivity >= IDLE_TIMEOUT) {
         localStorage.removeItem("isAdmin");
+        localStorage.removeItem("adminLastActivity");
         navigate("/admin/login");
         toast.info("Logged out due to 5 minutes of inactivity");
-      }, 300000);
+      }
+    };
+
+    // Initial set
+    resetTimer();
+
+    // Check every 10 seconds while tab is open
+    const intervalId = setInterval(checkIdle, 10000);
+
+    // Also check when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        checkIdle();
+      }
     };
 
     window.addEventListener("mousemove", resetTimer);
     window.addEventListener("keypress", resetTimer);
     window.addEventListener("scroll", resetTimer);
     window.addEventListener("click", resetTimer);
-    resetTimer();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      clearTimeout(timeoutId);
+      clearInterval(intervalId);
       window.removeEventListener("mousemove", resetTimer);
       window.removeEventListener("keypress", resetTimer);
       window.removeEventListener("scroll", resetTimer);
       window.removeEventListener("click", resetTimer);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isAdmin, navigate]);
 

@@ -63,7 +63,7 @@ export default function Footer() {
               <span className="ml-7">Sunday: 12 PM – 7 PM</span>
             </div>
             <div className="mt-5 overflow-hidden rounded-xl border border-border">
-            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d250.30746216104185!2d74.19025585434322!3d31.387091370237027!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3918ff1cffc322f7%3A0x4269f3fed1fb47!2sServaid%20Pharmacy!5e1!3m2!1sen!2s!4v1774650029367!5m2!1sen!2s" width="600" height="200" style={{ border: '0' }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
+              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d250.30746216104185!2d74.19025585434322!3d31.387091370237027!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3918ff1cffc322f7%3A0x4269f3fed1fb47!2sServaid%20Pharmacy!5e1!3m2!1sen!2s!4v1774650029367!5m2!1sen!2s" width="600" height="150" style={{ border: '0' }} allowFullScreen="" loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
             </div>
           </div>
         </div>
