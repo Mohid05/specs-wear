@@ -140,13 +140,13 @@ export default function AdminDashboard() {
   };
 
   const handleDispatch = (id: string, customer: string) => {
-    if (window.confirm(`Mark ${customer}'s order as dispatched? This will move it to the Dispatched section.`)) {
+    if (window.confirm(`Dispatch ${customer}'s order?`)) {
       updateStatusMutation.mutate({ id, status: 'shipped' });
     }
   };
 
   const handleSuccessful = (id: string, customer: string) => {
-    if (window.confirm(`Mark ${customer}'s order as Successful? This will add it to Recent Orders and update total earnings.`)) {
+    if (window.confirm(`Set ${customer}'s order as Successful? .`)) {
       updateStatusMutation.mutate({ id, status: 'delivered' });
     }
   };
@@ -156,13 +156,67 @@ export default function AdminDashboard() {
     setIsModalOpen(true);
   };
 
-  const handleWhatsApp = (phone: string, orderId: string) => {
-    const formattedPhone = formatWhatsAppNumber(phone);
+  const handleWhatsApp = async (order: any) => {
+    const formattedPhone = formatWhatsAppNumber(order.customer_phone);
     if (!formattedPhone) {
       toast.error("Invalid phone number");
       return;
     }
-    const message = encodeURIComponent(`Hello! We are contacting you regarding your SPECS WEAR order (${orderId.split('-')[0]})...`);
+
+    const { data: items, error } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        unit_price,
+        products (name)
+      `)
+      .eq('order_id', order.id);
+
+    if (error) {
+      toast.error(`Failed to fetch order items: ${error.message}`);
+      return;
+    }
+
+    const orderLines = (items || []).map((item: any, index: number) => {
+      const productName = item.products?.name || 'Product';
+      const qty = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unit_price) || 0;
+      const lineTotal = qty * unitPrice;
+      return `${index + 1}. ${productName}\n   Qty: ${qty} x Rs. ${unitPrice.toLocaleString()} = Rs. ${lineTotal.toLocaleString()}`;
+    });
+
+    const itemsSubtotal = (items || []).reduce((sum: number, item: any) => {
+      const qty = Number(item.quantity) || 0;
+      const unitPrice = Number(item.unit_price) || 0;
+      return sum + qty * unitPrice;
+    }, 0);
+
+    const orderTotal = Number(order.total_amount) || 0;
+    const shippingPrice = Math.max(orderTotal - itemsSubtotal, 0);
+    const orderRef = String(order.id || 'N/A').split('-')[0];
+    const orderDate = order.created_at
+      ? new Date(order.created_at).toLocaleString()
+      : 'N/A';
+
+    const message = encodeURIComponent(
+      `SPECS WEAR - ORDER INVOICE\n` +
+      `--------------------------------\n` +
+      `Invoice Ref: ${orderRef}\n` +
+      `Date: ${orderDate}\n\n` +
+      `Bill To:\n` +
+      `Name: ${order.customer_name || "N/A"}\n` +
+      `Email: ${order.customer_email || "N/A"}\n` +
+      `Phone: ${order.customer_phone || "N/A"}\n\n` +
+      `Ship To:\n` +
+      `${order.shipping_address || "N/A"}\n\n` +
+      `Items:\n` +
+      `${orderLines.length ? orderLines.join("\n") : "No items found"}\n\n` +
+      `Summary:\n` +
+      `Subtotal: Rs. ${itemsSubtotal.toLocaleString()}\n` +
+      `Shipping: Rs. ${shippingPrice.toLocaleString()}\n` +
+      `Grand Total: Rs. ${orderTotal.toLocaleString()}\n\n` +
+      `Thank you for shopping with SPECS WEAR.`
+    );
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
   };
 
@@ -292,7 +346,7 @@ export default function AdminDashboard() {
                             size="sm" 
                             variant="outline" 
                             className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
-                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                            onClick={() => handleWhatsApp(order)}
                           >
                             <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
                           </Button>
@@ -318,7 +372,7 @@ export default function AdminDashboard() {
                             size="sm" 
                             variant="outline" 
                             className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
-                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                            onClick={() => handleWhatsApp(order)}
                           >
                             <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
                           </Button>
@@ -344,7 +398,7 @@ export default function AdminDashboard() {
                             size="sm" 
                             variant="outline" 
                             className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
-                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                            onClick={() => handleWhatsApp(order)}
                           >
                             <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
                           </Button>

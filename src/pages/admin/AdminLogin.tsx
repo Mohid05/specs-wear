@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,24 @@ export default function AdminLogin() {
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    const isAdmin = localStorage.getItem("isAdmin") === "true";
+    const lastActivity = parseInt(localStorage.getItem("adminLastActivity") || "0");
+    const now = Date.now();
+    const isActiveSession = !!lastActivity && now - lastActivity < 300 * 1000;
+
+    if (isAdmin && isActiveSession) {
+      navigate("/admin", { replace: true });
+      return;
+    }
+
+    if (isAdmin && !isActiveSession) {
+      localStorage.removeItem("isAdmin");
+      localStorage.removeItem("admin_email");
+      localStorage.removeItem("adminLastActivity");
+    }
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +53,7 @@ export default function AdminLogin() {
       if (data.password === creds.password) {
         localStorage.setItem("isAdmin", "true");
         localStorage.setItem("admin_email", data.email);
+        localStorage.setItem("adminLastActivity", Date.now().toString());
         toast.success("Login successful");
         navigate("/admin");
       } else {

@@ -15,6 +15,8 @@ const adminLinks = [
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
+const IDLE_TIMEOUT_MS = 300 * 1000;
+
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pathname } = useLocation();
@@ -40,11 +42,21 @@ export default function AdminLayout() {
 
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
+  const clearAdminSession = () => {
+    localStorage.removeItem("isAdmin");
+    localStorage.removeItem("admin_email");
+    localStorage.removeItem("adminLastActivity");
+  };
+
   useEffect(() => {
     if (!isAdmin) return;
-    
-    const IDLE_TIMEOUT = 300000; // 5 minutes
-    
+
+    const logoutForInactivity = () => {
+      clearAdminSession();
+      navigate("/admin/login", { replace: true });
+      toast.info("Logged out due to 5 minutes of inactivity");
+    };
+
     const resetTimer = () => {
       localStorage.setItem("adminLastActivity", Date.now().toString());
     };
@@ -52,17 +64,19 @@ export default function AdminLayout() {
     const checkIdle = () => {
       const lastActivity = parseInt(localStorage.getItem("adminLastActivity") || "0");
       const now = Date.now();
-      
-      if (now - lastActivity >= IDLE_TIMEOUT) {
-        localStorage.removeItem("isAdmin");
-        localStorage.removeItem("adminLastActivity");
-        navigate("/admin/login");
-        toast.info("Logged out due to 5 minutes of inactivity");
+
+      if (!lastActivity || now - lastActivity >= IDLE_TIMEOUT_MS) {
+        logoutForInactivity();
       }
     };
 
-    // Initial set
-    resetTimer();
+    // Validate existing session activity first; do not revive stale sessions.
+    const initialLastActivity = parseInt(localStorage.getItem("adminLastActivity") || "0");
+    if (!initialLastActivity) {
+      resetTimer();
+    } else {
+      checkIdle();
+    }
 
     // Check every 10 seconds while tab is open
     const intervalId = setInterval(checkIdle, 10000);
@@ -75,17 +89,19 @@ export default function AdminLayout() {
     };
 
     window.addEventListener("mousemove", resetTimer);
-    window.addEventListener("keypress", resetTimer);
+    window.addEventListener("keydown", resetTimer);
     window.addEventListener("scroll", resetTimer);
     window.addEventListener("click", resetTimer);
+    window.addEventListener("touchstart", resetTimer);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       clearInterval(intervalId);
       window.removeEventListener("mousemove", resetTimer);
-      window.removeEventListener("keypress", resetTimer);
+      window.removeEventListener("keydown", resetTimer);
       window.removeEventListener("scroll", resetTimer);
       window.removeEventListener("click", resetTimer);
+      window.removeEventListener("touchstart", resetTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isAdmin, navigate]);
@@ -95,7 +111,7 @@ export default function AdminLayout() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("isAdmin");
+    clearAdminSession();
   };
 
   return (
