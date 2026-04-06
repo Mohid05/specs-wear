@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { storeInfo } from "@/data/mockData";
+import { useStoreInfo } from "@/contexts/StoreInfoContext";
 import { supabase } from "@/lib/supabase";
+import PageHero from "@/components/PageHero";
 
 export default function Contact() {
+  const { storeInfo } = useStoreInfo();
   const { toast } = useToast();
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
 
@@ -48,9 +50,14 @@ export default function Contact() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="font-display text-4xl font-bold text-foreground">Contact Us</h1>
-      <p className="mt-2 text-muted-foreground">Get in touch — we'd love to hear from you</p>
+    <div className="min-h-screen">
+      <PageHero 
+        title="Get in Touch" 
+        subtitle="Have questions? Our team is here to help you find the perfect pair of glasses" 
+        image="https://images.unsplash.com/photo-1596524430615-b46475ddff6e?w=1600&q=80" 
+      />
+
+      <div className="container mx-auto px-4 py-12">
 
       <div className="mt-10 grid gap-10 lg:grid-cols-2">
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-card p-8">
@@ -72,7 +79,7 @@ export default function Contact() {
             <h3 className="font-display text-xl font-bold text-foreground">Prefer WhatsApp?</h3>
             <p className="mt-2 text-muted-foreground">Chat directly with us for quick inquiries about products, pricing, or appointments.</p>
             <a href={`https://wa.me/${storeInfo.whatsapp}?text=Hello%20SPECS%20WEAR!`} target="_blank" rel="noopener noreferrer" className="mt-4 block">
-              <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary/10 gap-2"><MessageCircle className="h-4 w-4" /> Chat on WhatsApp</Button>
+              <Button variant="outline" className="w-full border-primary text-primary hover:bg-[#15a349] hover:text-white hover:border-[#15a349] gap-2 transition-colors"><MessageCircle className="h-4 w-4" /> Chat on WhatsApp</Button>
             </a>
           </div>
           <div className="rounded-xl border border-border bg-card p-8">
@@ -82,6 +89,7 @@ export default function Contact() {
             <p className="mt-1 text-muted-foreground">{storeInfo.phones?.join(' | ')}</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

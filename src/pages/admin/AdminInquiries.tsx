@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { MessageSquare, Trash2, CheckCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { formatWhatsAppNumber } from "@/lib/utils";
 
 export default function AdminInquiries() {
   const queryClient = useQueryClient();
@@ -47,11 +48,11 @@ export default function AdminInquiries() {
   });
 
   const handleWhatsApp = (phone: string, name: string) => {
-    if (!phone) {
-      toast.error("No phone number provided for this contact");
+    const formattedPhone = formatWhatsAppNumber(phone);
+    if (!formattedPhone) {
+      toast.error("No valid phone number provided for this contact");
       return;
     }
-    const formattedPhone = phone.replace(/\D/g, '');
     const message = encodeURIComponent(`Hello ${name}! We received your message via SPECS WEAR website...`);
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
   };
@@ -120,7 +121,7 @@ export default function AdminInquiries() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 gap-1.5"
+                        className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 transition-colors"
                         onClick={() => handleWhatsApp(msg.phone, msg.name)}
                         disabled={!msg.phone}
                       >

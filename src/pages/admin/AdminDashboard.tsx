@@ -11,7 +11,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { formatWhatsAppNumber } from "@/lib/utils";
+
+type OrderStatus = 'pending' | 'shipped' | 'delivered';
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -31,6 +34,7 @@ export default function AdminDashboard() {
 
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<OrderStatus>('pending');
 
   // Fetch order items with product details
   const { data: orderItems = [], isLoading: itemsLoading } = useQuery({
@@ -66,9 +70,54 @@ export default function AdminDashboard() {
 
   // Analytics based on live orders
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => o.status === 'pending').length;
+  const pendingCount = orders.filter((o: any) => o.status === 'pending' || !o.status).length;
+  const dispatchedCount = orders.filter((o: any) => o.status === 'shipped').length;
+  const successfulCount = orders.filter((o: any) => o.status === 'delivered').length;
   const newInquiries = inquiries.length;
-  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  
+  // Revenue is only from delivered (Successful) orders
+  const totalRevenue = orders
+    .filter((o: any) => o.status === 'delivered')
+    .reduce((sum: number, o: any) => sum + Number(o.total_amount), 0);
+
+  // Auto-cleanup for Delivered orders older than 7 days
+  useEffect(() => {
+    if (isLoading || orders.length === 0) return;
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const oldSuccessfulOrders = orders.filter((o: any) => 
+      o.status === 'delivered' && new Date(o.created_at) < sevenDaysAgo
+    );
+    
+    if (oldSuccessfulOrders.length > 0) {
+      console.log(`Auto-cleaning ${oldSuccessfulOrders.length} expired successful orders...`);
+      oldSuccessfulOrders.forEach((o: any) => {
+        deleteMutation.mutate(o.id);
+      });
+    }
+  }, [orders, isLoading]);
+
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: OrderStatus }) => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      let action = "updated";
+      if (variables.status === 'shipped') action = "dispatched";
+      else if (variables.status === 'delivered') action = "marked as successful";
+      toast.success(`Order ${action} successfully!`);
+    },
+    onError: (err: any) => {
+      toast.error(`Error updating order: ${err.message}`);
+    }
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -77,22 +126,28 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-      toast.success("Order dispatched and removed successfully!");
+      toast.success("Order removed from database.");
     },
     onError: (err) => {
-      toast.error(`Error processing order: ${err.message}`);
+      toast.error(`Error deleting order: ${err.message}`);
     }
   });
 
   const handleCancel = (id: string, customer: string) => {
-    if (window.confirm(`Are you sure you want to cancel ${customer}'s order? This will remove it from the database.`)) {
+    if (window.confirm(`Are you sure you want to permanently DELETE ${customer}'s order? This cannot be undone.`)) {
       deleteMutation.mutate(id);
     }
   };
 
   const handleDispatch = (id: string, customer: string) => {
-    if (window.confirm(`Are you sure you want to dispatch ${customer}'s order? This will remove it from the database.`)) {
-      deleteMutation.mutate(id);
+    if (window.confirm(`Mark ${customer}'s order as dispatched? This will move it to the Dispatched section.`)) {
+      updateStatusMutation.mutate({ id, status: 'shipped' });
+    }
+  };
+
+  const handleSuccessful = (id: string, customer: string) => {
+    if (window.confirm(`Mark ${customer}'s order as Successful? This will add it to Recent Orders and update total earnings.`)) {
+      updateStatusMutation.mutate({ id, status: 'delivered' });
     }
   };
 
@@ -102,107 +157,211 @@ export default function AdminDashboard() {
   };
 
   const handleWhatsApp = (phone: string, orderId: string) => {
-    // Format phone number by removing non-digits
-    const formattedPhone = phone.replace(/\D/g, '');
+    const formattedPhone = formatWhatsAppNumber(phone);
+    if (!formattedPhone) {
+      toast.error("Invalid phone number");
+      return;
+    }
     const message = encodeURIComponent(`Hello! We are contacting you regarding your SPECS WEAR order (${orderId.split('-')[0]})...`);
     window.open(`https://wa.me/${formattedPhone}?text=${message}`, "_blank");
   };
 
+  const filteredOrders = orders.filter((o: any) => {
+    if (activeTab === 'pending') return o.status === 'pending' || !o.status;
+    return o.status === activeTab;
+  });
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-foreground">Dashboard & Recent Orders</h1>
+      <h1 className="font-display text-2xl font-bold text-foreground">Dashboard & History</h1>
       
       {/* Stats row */}
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-10">
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Total Orders</p>
-            <Package className="h-5 w-5 text-primary" />
+            <p className="text-sm text-muted-foreground">Pending Orders</p>
+            <Package className="h-5 w-5 text-orange-500" />
           </div>
-          <p className="mt-2 text-3xl font-bold text-foreground">{totalOrders}</p>
+          <p className="mt-2 text-3xl font-bold text-foreground">{pendingCount}</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">Dispatched Orders</p>
+            <Truck className="h-5 w-5 text-green-500" />
+          </div>
+          <p className="mt-2 text-3xl font-bold text-foreground">{dispatchedCount}</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">New Inquiries</p>
-            <MessageSquare className="h-5 w-5 text-orange-500" />
+            <MessageSquare className="h-5 w-5 text-blue-500" />
           </div>
           <p className="mt-2 text-3xl font-bold text-foreground">{newInquiries}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-6">
+
+        <div className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-green-500">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Total Revenue</p>
+            <p className="text-sm text-muted-foreground font-medium">Total Earnings</p>
             <TrendingUpIcon className="h-5 w-5 text-green-500" />
           </div>
-          <p className="mt-2 text-3xl font-bold text-foreground">Rs. {totalRevenue.toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">Rs. {totalRevenue.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">From dispatched orders</p>
         </div>
       </div>
 
-      <h2 className="font-display text-xl font-bold mb-4">Manage Orders</h2>
-      <div className="overflow-auto rounded-xl border border-border bg-card">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-bold">Manage Orders</h2>
+          <div className="flex border border-border rounded-lg overflow-hidden bg-muted p-1">
+            <button 
+              onClick={() => setActiveTab('pending')}
+              className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'pending' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Pending
+            </button>
+            <button 
+              onClick={() => setActiveTab('shipped')}
+              className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'shipped' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Dispatched
+            </button>
+            <button 
+              onClick={() => setActiveTab('delivered')}
+              className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'delivered' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Recent Orders
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-auto rounded-xl border border-border bg-card shadow-sm">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading orders from database...</div>
-        ) : orders.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No orders found.</div>
+          <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            Loading orders...
+          </div>
+        ) : filteredOrders.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-3">
+             <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-muted-foreground/50">
+               <Package className="h-6 w-6" />
+             </div>
+             <div>
+               <p className="font-medium text-foreground">No {activeTab} orders found.</p>
+               <p className="text-xs">Incoming orders will appear here automatically.</p>
+             </div>
+          </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-border bg-secondary text-left">
+            <thead className="border-b border-border bg-secondary/50 text-left">
               <tr>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Customer Info</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Shipping Address</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Date</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Total</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                <th className="px-6 py-4 font-semibold text-foreground uppercase tracking-wider text-[11px]">Customer Info</th>
+                <th className="px-6 py-4 font-semibold text-foreground uppercase tracking-wider text-[11px]">Shipping Address</th>
+                <th className="px-6 py-4 font-semibold text-foreground uppercase tracking-wider text-[11px]">Date</th>
+                <th className="px-6 py-4 font-semibold text-foreground uppercase tracking-wider text-[11px]">Total</th>
+                <th className="px-6 py-4 font-semibold text-foreground uppercase tracking-wider text-[11px]">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {orders.map((order: any) => (
+            <tbody className="divide-y divide-border">
+              {filteredOrders.map((order: any) => (
                 <tr 
                   key={order.id} 
-                  className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer group"
+                  className="hover:bg-secondary/30 transition-all cursor-pointer group"
                   onClick={() => handleRowClick(order)}
                 >
-                  <td className="px-4 py-4 min-w-[200px]">
-                    <div className="font-medium text-foreground group-hover:text-primary transition-colors">{order.customer_name}</div>
-                    <div className="text-muted-foreground text-xs mt-1">{order.customer_email}</div>
-                    <div className="text-muted-foreground text-xs">{order.customer_phone}</div>
+                  <td className="px-6 py-5 min-w-[200px]">
+                    <div className="font-bold text-foreground group-hover:text-primary transition-colors">{order.customer_name}</div>
+                    <div className="text-muted-foreground text-xs font-medium mt-1 uppercase tracking-tight">{order.customer_phone}</div>
                   </td>
-                  <td className="px-4 py-4 max-w-xs truncate" title={order.shipping_address}>
+                  <td className="px-6 py-5 max-w-xs truncate font-medium text-muted-foreground" title={order.shipping_address}>
                     {order.shipping_address}
                   </td>
-                  <td className="px-4 py-4 text-muted-foreground">
-                    {new Date(order.created_at).toLocaleDateString()}
+                  <td className="px-6 py-5 text-muted-foreground font-medium">
+                    {new Date(order.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
-                  <td className="px-4 py-4 font-medium text-primary">
+                  <td className="px-6 py-5 font-bold text-foreground">
                     Rs. {Number(order.total_amount).toLocaleString()}
                   </td>
-                  <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                  <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400 gap-1.5"
-                        onClick={() => handleWhatsApp(order.customer_phone, order.id)}
-                      >
-                        <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90"
-                        onClick={() => handleDispatch(order.id, order.customer_name)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Truck className="h-3.5 w-3.5" /> Dispatch
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        className="gap-1.5"
-                        onClick={() => handleCancel(order.id, order.customer_name)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Cancel
-                      </Button>
+                       {order.status === 'pending' || !order.status ? (
+                         <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
+                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90 h-8 font-semibold"
+                            onClick={() => handleDispatch(order.id, order.customer_name)}
+                          >
+                            <Truck className="h-3.5 w-3.5" /> Dispatch
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-semibold"
+                            onClick={() => handleCancel(order.id, order.customer_name)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                         </>
+                       ) : order.status === 'shipped' ? (
+                         <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
+                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90 h-8 font-semibold"
+                            onClick={() => handleSuccessful(order.id, order.customer_name)}
+                          >
+                            <Eye className="h-3.5 w-3.5" /> Mark Successful
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-semibold"
+                            onClick={() => handleCancel(order.id, order.customer_name)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                         </>
+                       ) : (
+                         <>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 dark:hover:bg-[#15a349] dark:hover:text-white dark:hover:border-[#15a349] gap-1.5 h-8 font-semibold transition-colors"
+                            onClick={() => handleWhatsApp(order.customer_phone, order.id)}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> WhatsApp
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-semibold"
+                            onClick={() => {
+                              if (window.confirm("Archive this recent order?")) {
+                                deleteMutation.mutate(order.id);
+                              }
+                            }}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                         </>
+                       )}
                     </div>
                   </td>
                 </tr>
@@ -217,8 +376,11 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center justify-between">
               Order Details
-              <Badge variant={selectedOrder?.status === 'pending' ? 'secondary' : 'default'} className="ml-4">
-                {selectedOrder?.status || 'Processing'}
+              <Badge 
+                variant={selectedOrder?.status === 'pending' ? 'secondary' : selectedOrder?.status === 'shipped' ? 'default' : 'outline'} 
+                className={`ml-4 capitalize ${selectedOrder?.status === 'shipped' ? 'bg-blue-500 hover:bg-blue-600' : selectedOrder?.status === 'delivered' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
+              >
+                {selectedOrder?.status === 'shipped' ? 'Dispatched' : selectedOrder?.status === 'delivered' ? 'Successful' : (selectedOrder?.status || 'Processing')}
               </Badge>
             </DialogTitle>
             <DialogDescription>
@@ -303,16 +465,33 @@ export default function AdminDashboard() {
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
-                <Button 
-                  className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90"
-                  onClick={() => {
-                    handleDispatch(selectedOrder.id, selectedOrder.customer_name);
-                    setIsModalOpen(false);
-                  }}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Truck className="h-4 w-4" /> Dispatch Order
-                </Button>
+                
+                {(!selectedOrder.status || selectedOrder.status === 'pending') && (
+                  <Button 
+                    className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90"
+                    onClick={() => {
+                      handleDispatch(selectedOrder.id, selectedOrder.customer_name);
+                      setIsModalOpen(false);
+                    }}
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <Truck className="h-4 w-4" /> Dispatch Order
+                  </Button>
+                )}
+
+                {selectedOrder.status === 'shipped' && (
+                  <Button 
+                    className="bg-green-600 text-white gap-1.5 hover:bg-green-700"
+                    onClick={() => {
+                      handleSuccessful(selectedOrder.id, selectedOrder.customer_name);
+                      setIsModalOpen(false);
+                    }}
+                    disabled={updateStatusMutation.isPending}
+                  >
+                    <Eye className="h-4 w-4" /> Mark as Successful
+                  </Button>
+                )}
+
                 <Button 
                   variant="destructive" 
                   className="gap-1.5"
@@ -322,7 +501,7 @@ export default function AdminDashboard() {
                   }}
                   disabled={deleteMutation.isPending}
                 >
-                  <Trash2 className="h-4 w-4" /> Cancel Order
+                  <Trash2 className="h-4 w-4" /> Delete Order
                 </Button>
               </div>
             </div>

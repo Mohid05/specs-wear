@@ -18,7 +18,7 @@ export default function AdminProducts() {
   const [searchTerm, setSearchTerm] = useState('');
   
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ['admin-products'],
+    queryKey: ['products-list'],
     queryFn: async () => {
       const { data, error } = await supabase.from('products').select('*').order('id', { ascending: true });
       if (error) throw error;
@@ -32,7 +32,7 @@ export default function AdminProducts() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-list'] });
       toast.success("Product deleted successfully");
     },
     onError: (err) => toast.error(`Error deleting product: ${err.message}`)
@@ -60,7 +60,7 @@ export default function AdminProducts() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] });
+      queryClient.invalidateQueries({ queryKey: ['products-list'] });
       setEditingId(null);
       toast.success(`Product ${editingId === 'new' ? 'added' : 'updated'} successfully`);
     },

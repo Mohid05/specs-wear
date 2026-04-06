@@ -1,12 +1,21 @@
 import { Target, Eye, Heart } from "lucide-react";
-import { storeInfo } from "@/data/mockData";
+import { storeInfo as fallbackInfo } from "@/data/mockData";
+import { useStoreInfo } from "@/contexts/StoreInfoContext";
 import SpecsLogo from "@/components/SpecsLogo";
+import PageHero from "@/components/PageHero";
 
 export default function About() {
+  const { storeInfo: liveStoreInfo } = useStoreInfo();
+  const storeInfo = liveStoreInfo || fallbackInfo;
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="font-display text-4xl font-bold text-foreground">About SPECS WEAR</h1>
-      <p className="mt-2 text-muted-foreground">Your trusted optical partner in Lahore</p>
+    <div className="min-h-screen">
+      <PageHero 
+        title="Our Story" 
+        subtitle="Providing premium eyewear and professional eye care in Lahore since our inception" 
+        image="https://images.unsplash.com/photo-1556015048-4d3aa10df74c?w=1600&q=80" 
+      />
+
+      <div className="container mx-auto px-4 py-12">
 
       <div className="mt-12 grid gap-10 lg:grid-cols-2">
         <div>
@@ -78,6 +87,7 @@ export default function About() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.text}</p>
           </div>
         ))}
+      </div>
       </div>
     </div>
   );

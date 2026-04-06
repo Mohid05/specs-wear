@@ -1,13 +1,21 @@
 /** Reusable SPECS WEAR logo matching the business card style */
-export default function SpecsLogo({ className = "", addTagline = false, variant = "header" }: { className?: string, addTagline?: boolean, variant?: "header" | "card" }) {
-  // If in header, use primary color for text to match the theme.
-  // If in card, use dark/blue colors because the background is yellow.
+export default function SpecsLogo({ 
+  className = "", 
+  addTagline = false, 
+  variant = "header",
+  isInverse = false 
+}: { 
+  className?: string, 
+  addTagline?: boolean, 
+  variant?: "header" | "card",
+  isInverse?: boolean
+}) {
   const isHeader = variant === "header";
 
-  const textColorClass = isHeader ? "text-primary" : "text-[#1E293B]";
-  const badgeBgClass = isHeader ? "bg-blue-accent" : "bg-[#1D70B8]";
-  const badgeTextClass = isHeader ? "text-primary-foreground" : "text-white";
-  const iconColorClass = isHeader ? "text-blue-accent" : "text-[#1D70B8]";
+  const textColorClass = (isHeader || isInverse) ? "text-[var(--nav-foreground)]" : "text-[#1E293B]";
+  const badgeBgClass = (isHeader || isInverse) ? "bg-blue-accent" : "bg-[#1D70B8]";
+  const badgeTextClass = (isHeader || isInverse) ? "text-primary-foreground" : "text-white";
+  const iconColorClass = (isHeader || isInverse) ? "text-blue-accent" : "text-[#1D70B8]";
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>

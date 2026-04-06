@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import SpecsLogo from "@/components/SpecsLogo";
 import { toast } from "sonner";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Sun, Moon } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function AdminLogin() {
   const navigate = useNavigate();
   const [creds, setCreds] = useState({ email: "", password: "" });
   const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,9 +52,22 @@ export default function AdminLogin() {
       <Link to="/" className="absolute top-6 left-6 md:top-8 md:left-8 flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4" /> Back to Website
       </Link>
+      <div className="absolute top-6 right-6 md:top-8 md:right-8">
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-full transition-colors duration-200 text-muted-foreground hover:bg-secondary hover:text-primary"
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </button>
+      </div>
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
         <div className="flex flex-col items-center mb-6">
-          <SpecsLogo className="scale-125" />
+          <SpecsLogo className="scale-125" variant="card" isInverse={theme === "dark"} />
           <h1 className="mt-4 font-display text-2xl font-bold text-foreground">Admin Login</h1>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">

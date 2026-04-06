@@ -1,13 +1,16 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MessageCircle, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { storeInfo } from "@/data/mockData";
+import { storeInfo as fallbackInfo } from "@/data/mockData";
+import { useStoreInfo } from "@/contexts/StoreInfoContext";
 import { useProduct } from "@/hooks/useProducts";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 
 export default function ProductDetail() {
   const { id } = useParams();
+  const { storeInfo: liveStoreInfo } = useStoreInfo();
+  const storeInfo = liveStoreInfo || fallbackInfo;
   const { addToCart } = useCart();
   const { data: product, isLoading, error } = useProduct(id ?? "");
 
@@ -86,7 +89,7 @@ export default function ProductDetail() {
               <ShoppingCart className="h-5 w-5" /> {product.is_out_of_stock ? "Out of Stock" : "Add to Cart"}
             </Button>
             <a href={`https://wa.me/${storeInfo.whatsapp}?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-              <Button size="lg" variant="outline" className="w-full border-primary/30 text-foreground hover:bg-primary/10 gap-2">
+              <Button size="lg" variant="outline" className="w-full border-primary/30 text-foreground hover:bg-[#15a349] hover:text-white hover:border-[#15a349] gap-2 transition-colors">
                 <MessageCircle className="h-5 w-5" /> WhatsApp Us
               </Button>
             </a>

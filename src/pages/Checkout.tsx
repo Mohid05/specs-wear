@@ -30,6 +30,21 @@ export default function Checkout() {
       city: formData.get('city') as string,
       zip: formData.get('zip') as string,
     };
+
+    // Validation
+    const phoneRegex = /^((\+92)|(92)|(0))3\d{2}-?\d{7}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    if (!phoneRegex.test(data.phone)) {
+      toast.error("Please enter a valid Pakistan phone number (e.g., 03001234567)");
+      return;
+    }
+
+    if (!emailRegex.test(data.email)) {
+      toast.error("Please enter a professional email address (e.g., name@example.com)");
+      return;
+    }
+
     setCustomerData(data);
     setIsReviewing(true);
     window.scrollTo(0, 0);
@@ -347,7 +362,7 @@ export default function Checkout() {
                 <Input required defaultValue={customerData?.address} name="address" placeholder="Street Address" />
                 <div className="grid grid-cols-2 gap-4">
                   <Input required defaultValue={customerData?.city} name="city" placeholder="City" />
-                  <Input required defaultValue={customerData?.zip} name="zip" placeholder="Zip Code" />
+                  <Input defaultValue={customerData?.zip} name="zip" placeholder="Zip Code (Optional)" />
                 </div>
               </div>
 

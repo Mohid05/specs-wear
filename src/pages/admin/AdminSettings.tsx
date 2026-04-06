@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { storeInfo as defaultStoreInfo } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Trash2, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useStoreInfo } from "@/contexts/StoreInfoContext";
 
 export default function AdminSettings() {
+  const { storeInfo: globalStoreInfo, updateStoreInfo, isLoading: isInfoLoading } = useStoreInfo();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSavingPass, setIsSavingPass] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,48 +20,47 @@ export default function AdminSettings() {
   const [authPassword, setAuthPassword] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showAuthPass, setShowAuthPass] = useState(false);
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
   
-  // Store info state
-  const [storeInfo, setStoreInfo] = useState({
-    emails: defaultStoreInfo.emails || ["specswear23@gmail.com"],
-    phones: defaultStoreInfo.phones || ["0309 04 111 66", "0313 60 640 67"],
-    address: defaultStoreInfo.address,
-  });
+  // Local edit state
+  const [localStoreInfo, setLocalStoreInfo] = useState(globalStoreInfo);
+
+  useEffect(() => {
+    setLocalStoreInfo(globalStoreInfo);
+  }, [globalStoreInfo]);
 
   const handleAddField = (field: 'emails' | 'phones') => {
-    if (storeInfo[field].length >= 2) return;
-    setStoreInfo({ ...storeInfo, [field]: [...storeInfo[field], ""] });
+    if (localStoreInfo[field].length >= 2) return;
+    setLocalStoreInfo({ ...localStoreInfo, [field]: [...localStoreInfo[field], ""] });
   };
 
   const handleRemoveField = (field: 'emails' | 'phones', index: number) => {
-    if (storeInfo[field].length <= 1) return;
-    const newArr = [...storeInfo[field]];
+    if (localStoreInfo[field].length <= 1) return;
+    const newArr = [...localStoreInfo[field]];
     newArr.splice(index, 1);
-    setStoreInfo({ ...storeInfo, [field]: newArr });
+    setLocalStoreInfo({ ...localStoreInfo, [field]: newArr });
   };
 
   const handleUpdateField = (field: 'emails' | 'phones', index: number, value: string) => {
-    const newArr = [...storeInfo[field]];
+    const newArr = [...localStoreInfo[field]];
     newArr[index] = value;
-    setStoreInfo({ ...storeInfo, [field]: newArr });
+    setLocalStoreInfo({ ...localStoreInfo, [field]: newArr });
   };
 
-  useEffect(() => {
-    const savedInfo = localStorage.getItem("admin_store_info");
-    if (savedInfo) {
-      setStoreInfo({ ...defaultStoreInfo, ...JSON.parse(savedInfo) });
-    }
-  }, []);
-
-  const handleSaveStoreInfo = (e: React.FormEvent) => {
+  const handleSaveStoreInfo = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("admin_store_info", JSON.stringify(storeInfo));
-    toast.success("Store contact info updated successfully!");
-    setIsEditingContact(false);
-    // Instruct use to reload app to see changes globally
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
+    setIsSavingInfo(true);
+    
+    // Auto-update whatsapp number from first phone if it changed
+    const whatsapp = localStoreInfo.phones[0].replace(/\D/g, '');
+    const finalInfo = { ...localStoreInfo, whatsapp: whatsapp.startsWith('0') ? '92' + whatsapp.substring(1) : whatsapp };
+
+    const success = await updateStoreInfo(finalInfo);
+    if (success) {
+      toast.success("Store contact info updated in Supabase!");
+      setIsEditingContact(false);
+    }
+    setIsSavingInfo(false);
   };
 
   const handleAuthenticateToEdit = async (e: React.FormEvent) => {
@@ -184,18 +184,18 @@ export default function AdminSettings() {
                   <div>
                     <span className="font-semibold text-sm text-foreground">Emails</span>
                     <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
-                      {storeInfo.emails.map((e, i) => <li key={`view-email-${i}`} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary/50" /> {e}</li>)}
+                      {globalStoreInfo.emails.map((e, i) => <li key={`view-email-${i}`} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary/50" /> {e}</li>)}
                     </ul>
                   </div>
                   <div>
                     <span className="font-semibold text-sm text-foreground">Phones</span>
                     <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
-                      {storeInfo.phones.map((p, i) => <li key={`view-phone-${i}`} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary/50" /> {p}</li>)}
+                      {globalStoreInfo.phones.map((p, i) => <li key={`view-phone-${i}`} className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-primary/50" /> {p}</li>)}
                     </ul>
                   </div>
                   <div>
                     <span className="font-semibold text-sm text-foreground">Address</span>
-                    <p className="mt-1 text-sm text-muted-foreground flex items-start gap-2 max-w-sm"><div className="w-1.5 h-1.5 rounded-full bg-primary/50 mt-1.5 shrink-0" /> {storeInfo.address}</p>
+                    <p className="mt-1 text-sm text-muted-foreground flex items-start gap-2 max-w-sm"><div className="w-1.5 h-1.5 rounded-full bg-primary/50 mt-1.5 shrink-0" /> {globalStoreInfo.address}</p>
                   </div>
                 </div>
 
@@ -242,14 +242,14 @@ export default function AdminSettings() {
                   <div className="space-y-4">
                     <label className="text-sm font-medium flex justify-between items-center">
                       Contact Emails
-                      {storeInfo.emails.length < 2 && (
+                      {localStoreInfo.emails.length < 2 && (
                         <Button type="button" variant="outline" size="sm" onClick={() => handleAddField('emails')}>Add Email</Button>
                       )}
                     </label>
-                    {storeInfo.emails.map((email, i) => (
+                    {localStoreInfo.emails.map((email, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input value={email} onChange={e => handleUpdateField('emails', i, e.target.value)} required />
-                        {storeInfo.emails.length > 1 && (
+                        {localStoreInfo.emails.length > 1 && (
                            <Button type="button" variant="destructive" size="icon" onClick={() => handleRemoveField('emails', i)} className="shrink-0"><Trash2 className="h-4 w-4" /></Button>
                         )}
                       </div>
@@ -258,14 +258,14 @@ export default function AdminSettings() {
                   <div className="space-y-4">
                     <label className="text-sm font-medium flex justify-between items-center">
                       Contact Numbers
-                      {storeInfo.phones.length < 2 && (
+                      {localStoreInfo.phones.length < 2 && (
                         <Button type="button" variant="outline" size="sm" onClick={() => handleAddField('phones')}>Add Number</Button>
                       )}
                     </label>
-                    {storeInfo.phones.map((phone, i) => (
+                    {localStoreInfo.phones.map((phone, i) => (
                       <div key={i} className="flex items-center gap-2">
                         <Input value={phone} onChange={e => handleUpdateField('phones', i, e.target.value)} required />
-                        {storeInfo.phones.length > 1 && (
+                        {localStoreInfo.phones.length > 1 && (
                            <Button type="button" variant="destructive" size="icon" onClick={() => handleRemoveField('phones', i)} className="shrink-0"><Trash2 className="h-4 w-4" /></Button>
                         )}
                       </div>
@@ -274,8 +274,8 @@ export default function AdminSettings() {
                   <div className="space-y-2 md:col-span-2 mt-2 border-t border-border pt-6">
                     <label className="text-sm font-medium">Store Location (Address)</label>
                     <Input 
-                      value={storeInfo.address} 
-                      onChange={e => setStoreInfo({ ...storeInfo, address: e.target.value })} 
+                      value={localStoreInfo.address} 
+                      onChange={e => setLocalStoreInfo({ ...localStoreInfo, address: e.target.value })} 
                       required 
                     />
                   </div>

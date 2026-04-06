@@ -4,6 +4,8 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/ProductCard";
 import { useProducts } from "@/hooks/useProducts";
+import PageHero from "@/components/PageHero";
+import catalogHero from "@/assets/catalog-hero.png";
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -14,6 +16,15 @@ export default function Catalog() {
   const [gender, setGender] = useState(initGender);
   const [search, setSearch] = useState("");
   const { data: products = [], isLoading, error } = useProducts();
+  
+  // Diagnostic log for the user's console
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log("Catalog received products:", products);
+    } else if (!isLoading && !error) {
+      console.warn("Catalog received 0 products from Supabase.");
+    }
+  }, [products, isLoading, error]);
 
   // Sync state with URL params
   useEffect(() => {
@@ -32,9 +43,16 @@ export default function Catalog() {
   };
 
   const filtered = products.filter((p) => {
-    const matchCat = category === "all" || p.category === category;
-    const matchGender = gender === "all" || p.gender === gender;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    if (!p) return false;
+    // Robust checks for missing or differently-cased fields
+    const pCat = (p.category || "").toLowerCase();
+    const pGender = (p.gender || "").toLowerCase();
+    const pName = (p.name || "").toLowerCase();
+    
+    const matchCat = category === "all" || pCat === category.toLowerCase();
+    const matchGender = gender === "all" || pGender === gender.toLowerCase();
+    const matchSearch = pName.includes(search.toLowerCase());
+    
     return matchCat && matchGender && matchSearch;
   });
 
@@ -51,9 +69,14 @@ export default function Catalog() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <h1 className="font-display text-4xl font-bold text-foreground">Our Catalog</h1>
-      <p className="mt-2 text-muted-foreground">Browse our premium eyewear collection</p>
+    <div className="min-h-screen">
+      <PageHero 
+        title="Our Collection" 
+        subtitle="Browse through our curated selection of premium frames and sunglasses" 
+        image={catalogHero} 
+      />
+      
+      <div className="container mx-auto px-4 py-12">
 
       <div className="mt-8 flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -96,16 +119,30 @@ export default function Catalog() {
       </div>
 
       {isLoading ? (
-        <div className="mt-16 flex justify-center text-muted-foreground">Loading products...</div>
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={`skeleton-${i}`} className="animate-pulse flex flex-col gap-4">
+              <div className="aspect-square w-full rounded-xl bg-card border border-border" />
+              <div className="space-y-2">
+                <div className="h-4 w-2/3 rounded bg-card" />
+                <div className="h-4 w-1/3 rounded bg-card" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : error ? (
-        <div className="mt-16 text-center text-destructive">Error loading products.</div>
+        <div className="mt-16 text-center text-destructive flex flex-col items-center gap-4">
+          <p>Error loading products. Please check your connection.</p>
+          <button onClick={() => window.location.reload()} className="text-sm font-medium text-primary hover:underline">Retry</button>
+        </div>
       ) : filtered.length === 0 ? (
-        <p className="mt-16 text-center text-muted-foreground">No products found.</p>
+        <p className="mt-16 text-center text-muted-foreground">No products found matching your criteria.</p>
       ) : (
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filtered.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       )}
+      </div>
     </div>
   );
 }

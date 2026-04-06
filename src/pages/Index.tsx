@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import ProductCard from "@/components/ProductCard";
 import { testimonials, storeInfo } from "@/data/mockData";
 import { useProducts } from "@/hooks/useProducts";
-import heroBanner from "@/assets/hero-banner.jpg";
-import framesImg from "@/assets/frames-category.jpg";
-import sunglassesImg from "@/assets/sunglasses-category.jpg";
+import BrandMarquee from "@/components/BrandMarquee";
+import heroBanner from "@/assets/hero-blue.png";
+import framesImg from "@/assets/optic-glasses-table.jpg";
+import sunglassesImg from "@/assets/sunglasses-grey-surface.jpg";
+import menImg from "@/assets/front-view-modern-black-sunglasses-pink-dark.jpg";
+import womenImg from "@/assets/glasses-with-slightly-rounded-frame.jpg";
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);
@@ -52,7 +55,8 @@ export default function Index() {
       {/* Hero */}
       <section className="relative flex min-h-[90vh] items-center overflow-hidden">
         <img src={heroBanner} alt="SPECS WEAR Hero" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
+        {/* Soft blue-ish overlays for the new theme */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0f172a]/40 via-transparent to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
         <div className="container relative z-10 px-4 py-24">
           <motion.div
@@ -116,6 +120,8 @@ export default function Index() {
         </div>
       </section>
 
+      <BrandMarquee />
+
       {/* Categories with images */}
       <AnimatedSection className="container mx-auto px-4 py-24">
         <div className="text-center">
@@ -131,8 +137,8 @@ export default function Index() {
           {[
             { title: "Frames", desc: "Prescription & fashion frames for every face shape", filter: "category=frames", image: framesImg, count: "200+ Styles" },
             { title: "Sunglasses", desc: "UV-protected stylish shades for every occasion", filter: "category=sunglasses", image: sunglassesImg, count: "150+ Styles" },
-            { title: "Men's Eyewear", desc: "Sophisticated styles exclusively for men", filter: "gender=men", image: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&q=80", count: "180+ Styles" },
-            { title: "Women's Eyewear", desc: "Elegant and chic frames for modern women", filter: "gender=women", image: "https://images.unsplash.com/photo-1577803645773-f96470509666?w=800&q=80", count: "220+ Styles" }
+            { title: "Men's Eyewear", desc: "Sophisticated styles exclusively for men", filter: "gender=men", image: menImg, count: "180+ Styles" },
+            { title: "Women's Eyewear", desc: "Elegant and chic frames for modern women", filter: "gender=women", image: womenImg, count: "220+ Styles" }
           ].map((cat, i) => (
             <motion.div
               key={cat.filter}
@@ -147,7 +153,7 @@ export default function Index() {
               >
                 <div className="aspect-[16/9] overflow-hidden">
                   <img src={cat.image} alt={cat.title} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                  <div className="absolute inset-0" />
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-8">
                   <span className="mb-2 inline-block rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-sm">{cat.count}</span>

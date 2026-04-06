@@ -50,6 +50,68 @@
     --sidebar-accent-foreground: 48 20% 92%;
     --sidebar-border: 225 30% 18%;
     --sidebar-ring: 57 100% 47.9%;
+
+    /* Gold gradients */
+    --gold-1: 57 100% 47.9%;
+    --gold-2: 45 100% 50%;
+    --gold-3: 50 100% 40%;
+
+    --nav-bg: 225 40% 12%;
+    --nav-foreground: 48 20% 92%;
+
+    --footer-bg: 225 30% 12%;
+    --footer-foreground-muted: 215 16% 57%;
+    --footer-foreground-bright: 210 40% 98%;
+  }
+
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 225 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 225 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 40% 12%;
+
+    --primary: 225 40% 15%;
+    --primary-foreground: 210 20% 98%;
+
+    --secondary: 225 30% 95%;
+    --secondary-foreground: 225 40% 12%;
+
+    --muted: 225 20% 96%;
+    --muted-foreground: 225 20% 40%;
+
+    --accent: 225 40% 15%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 225 30% 90%;
+    --input: 225 30% 90%;
+    --ring: 225 40% 15%;
+
+    --sidebar-background: 225 20% 96%;
+    --sidebar-foreground: 225 40% 12%;
+    --sidebar-primary: 225 40% 15%;
+    --sidebar-primary-foreground: 210 20% 98%;
+    --sidebar-accent: 225 30% 92%;
+    --sidebar-accent-foreground: 225 40% 12%;
+    --sidebar-border: 225 30% 88%;
+    --sidebar-ring: 225 40% 15%;
+
+    --gold-1: 225 40% 15%;
+    --gold-2: 225 40% 15%;
+    --gold-3: 225 40% 15%;
+
+    --nav-bg: 225 40% 15%;
+    --nav-foreground: 0 0% 100%;
+
+    --footer-bg: 225 30% 12%;
+    --footer-foreground-muted: 215 16% 57%;
+    --footer-foreground-bright: 210 40% 98%;
   }
 }
 
@@ -80,11 +142,11 @@
 @layer utilities {
   .text-gradient-gold {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(57 100% 47.9%), hsl(45 100% 50%));
+    background-image: linear-gradient(135deg, hsl(var(--gold-1)), hsl(var(--gold-2)));
   }
 
   .bg-gradient-gold {
-    background-image: linear-gradient(135deg, hsl(57 100% 47.9%), hsl(50 100% 40%));
+    background-image: linear-gradient(135deg, hsl(var(--gold-1)), hsl(var(--gold-3)));
   }
 
   .bg-gradient-navy {
