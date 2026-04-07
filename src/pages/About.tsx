@@ -35,7 +35,7 @@ export default function About() {
             <div className="flex w-[55%] flex-col bg-[#1E293B] p-4 sm:p-6 md:p-8 relative text-gray-300" style={{ backgroundImage: "radial-gradient(#334155 1px, transparent 1px)", backgroundSize: "4px 4px" }}>
               <div className="flex flex-col mt-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="h-6 w-3 bg-primary" />
+                  <div className="h-6 w-3 bg-[#F4E800]" />
                   <h3 className="font-sans text-lg sm:text-xl font-medium tracking-wide text-gray-200">AHMAD SHAHZAD</h3>
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-400 uppercase tracking-widest ml-5">PROPRIETOR</p>
@@ -67,7 +67,7 @@ export default function About() {
             <div className="w-1.5 bg-[#1D70B8] h-full" />
 
             {/* Yellow side */}
-            <div className="flex w-[45%] flex-col items-center justify-center bg-primary p-4 relative">
+            <div className="flex w-[45%] flex-col items-center justify-center bg-[#F4E800] p-4 relative">
               <SpecsLogo addTagline={true} variant="card" className="scale-75 sm:scale-100" />
             </div>
           </div>
