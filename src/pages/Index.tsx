@@ -74,9 +74,9 @@ export default function Index() {
             <h1 className="font-display text-5xl font-bold leading-[1.1] md:text-7xl lg:text-8xl">
               <span className="text-gradient-gold">See Clear.</span>
               <br />
-              <span className="text-foreground">Look Sharp.</span>
+              <span className="text-white">Look Sharp.</span>
             </h1>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-[#f0f8ff]">
               Discover premium frames & sunglasses crafted for style and comfort at Lahore's most trusted optical store.
             </p>
             <motion.div
