@@ -31,7 +31,8 @@ export default function ProductDetail() {
     );
   }
 
-  const whatsappMsg = encodeURIComponent(`Hi! I'm interested in ${product.name} (Rs. ${product.price.toLocaleString()}) from SPECS WEAR.`);
+  const productUrl = window.location.href;
+  const whatsappMsg = encodeURIComponent(`SPECS WEAR - Catalog Inquiry\n\nI'm interested in the following product:\nProduct: ${product.name}\nReference: ${productUrl}\n\nKindly provide more details regarding this item.`);
 
   return (
     <div className="container mx-auto px-4 py-12">
