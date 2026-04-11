@@ -4,23 +4,43 @@ import type { Product } from '@/data/mockData';
 
 export const useProducts = () => {
   return useQuery({
-    queryKey: ['products-list'],
+    queryKey: ['products-list-metadata'],
     queryFn: async () => {
-      console.log("Fetching products from Supabase...");
+      console.log("Fetching products from Supabase (metadata only)...");
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .order('id', { ascending: true });
+        .select('id, name, price, category, gender, description, specs, created_at, stock_quantity, is_out_of_stock')
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error("Supabase fetch error:", error);
         throw new Error(error.message);
       }
-      console.log("Fetched products count:", data?.length || 0, data);
       return (data || []) as Product[];
     },
-    staleTime: 1000 * 60 * 5, // Keep data fresh for 5 minutes
-    gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
+  });
+};
+
+export const useProductImage = (id: string | number) => {
+  return useQuery({
+    queryKey: ['product-image', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('image')
+        .eq('id', Number(id))
+        .single();
+      
+      if (error) {
+        throw new Error(error.message);
+      }
+      return data.image as string;
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 60, // Cache image for an hour
   });
 };
 

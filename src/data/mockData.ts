@@ -4,7 +4,7 @@ export interface Product {
   price: number;
   category: "frames" | "sunglasses";
   gender: "men" | "women" | "unisex";
-  image: string;
+  image?: string;
   description: string;
   specs: { label: string; value: string }[];
   stock_quantity?: number;

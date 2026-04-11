@@ -3,18 +3,26 @@ import { Eye, ShoppingCart } from "lucide-react";
 import type { Product } from "@/data/mockData";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { useProductImage } from "@/hooks/useProducts";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const { data: fetchedImage, isLoading: imageLoading } = useProductImage(product.id);
+  const displayImage = product.image || fetchedImage;
+
   return (
     <Link
       to={`/product/${product.id}`}
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-primary/40 hover:shadow-gold"
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
-        {product.image ? (
+        {imageLoading && !product.image ? (
+          <div className="h-full w-full flex items-center justify-center bg-secondary">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : displayImage ? (
           <img
-            src={product.image}
+            src={displayImage}
             alt={product.name}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
             loading="lazy"

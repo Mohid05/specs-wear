@@ -8,10 +8,10 @@ import { testimonials, storeInfo } from "@/data/mockData";
 import { useProducts } from "@/hooks/useProducts";
 import BrandMarquee from "@/components/BrandMarquee";
 import heroBanner from "@/assets/hero-blue.png";
-import framesImg from "@/assets/optic-glasses-table.jpg";
-import sunglassesImg from "@/assets/sunglasses-grey-surface.jpg";
-import menImg from "@/assets/front-view-modern-black-sunglasses-pink-dark.jpg";
-import womenImg from "@/assets/glasses-with-slightly-rounded-frame.jpg";
+import framesImg from "@/assets/frames-cat.png";
+import sunglassesImg from "@/assets/top-view-sunglasses-floating-water.webp";
+import menImg from "@/assets/men-cat.png";
+import womenImg from "@/assets/women-cat.png";
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const ref = useRef(null);

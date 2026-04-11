@@ -21,7 +21,11 @@ export default function AdminProducts() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products-list'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('products').select('*').order('id', { ascending: true });
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name, price, category, gender, stock_quantity, is_out_of_stock, description, specs, created_at')
+        .order('created_at', { ascending: false })
+        .limit(100);
       if (error) throw error;
       return data as Product[];
     }
@@ -75,10 +79,26 @@ export default function AdminProducts() {
     setRemoveImage(false);
   };
 
+  // Fetch individual product details only when editing an existing product
+  const { data: fullProduct, isLoading: isFetchingFull } = useQuery({
+    queryKey: ['product', editingId],
+    queryFn: async () => {
+      if (editingId === null || editingId === 'new') return null;
+      const { data, error } = await supabase.from('products').select('*').eq('id', editingId).single();
+      if (error) throw error;
+      return data as Product;
+    },
+    enabled: editingId !== null && editingId !== 'new'
+  });
+
   if (editingId !== null) {
     const product = editingId === 'new' 
       ? { name: '', price: 0, category: 'frames', gender: 'unisex', image: '', description: '', stock_quantity: 10, is_out_of_stock: false, specs: [] } as Partial<Product>
-      : products.find(p => p.id === editingId) || {} as Partial<Product>;
+      : fullProduct || (products.find(p => p.id === editingId) || {} as Partial<Product>);
+
+    if (editingId !== 'new' && isFetchingFull) {
+        return <div className="p-12 text-center">Loading product data...</div>;
+    }
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
