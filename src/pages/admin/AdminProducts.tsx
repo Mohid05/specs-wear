@@ -9,6 +9,30 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/data/mockData";
 
+const ProductTableImage = ({ productId }: { productId: number }) => {
+  const { data: imageUrl, isLoading } = useQuery({
+    queryKey: ['product-row-image', productId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('products').select('image').eq('id', productId).single();
+      if (error) throw error;
+      return data.image as string;
+    },
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+
+  if (isLoading) return <Skeleton className="h-10 w-10 rounded" />;
+  
+  return (
+    <div className="h-10 w-10 rounded border border-border bg-secondary flex items-center justify-center overflow-hidden">
+      {imageUrl ? (
+        <img src={imageUrl} alt="Product" className="h-full w-full object-cover" />
+      ) : (
+        <span className="text-[10px] text-muted-foreground uppercase font-medium">N/A</span>
+      )}
+    </div>
+  );
+};
+
 export default function AdminProducts() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -427,11 +451,7 @@ export default function AdminProducts() {
               {displayedProducts.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
                   <td className="px-4 py-3">
-                    {p.image ? (
-                      <img src={p.image} alt={p.name} className="h-10 w-10 rounded object-cover border border-border" />
-                    ) : (
-                      <div className="h-10 w-10 rounded bg-secondary flex items-center justify-center text-muted-foreground text-[10px] border border-border">N/A</div>
-                    )}
+                    <ProductTableImage productId={p.id} />
                   </td>
                   <td className="px-4 py-3 font-medium text-foreground">{p.name}</td>
                   <td className="px-4 py-3">
