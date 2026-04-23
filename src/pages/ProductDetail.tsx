@@ -3,7 +3,8 @@ import { ArrowLeft, MessageCircle, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { storeInfo as fallbackInfo } from "@/data/mockData";
 import { useStoreInfo } from "@/contexts/StoreInfoContext";
-import { useProduct } from "@/hooks/useProducts";
+import { useProduct, useProductImage } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 
@@ -13,11 +14,33 @@ export default function ProductDetail() {
   const storeInfo = liveStoreInfo || fallbackInfo;
   const { addToCart } = useCart();
   const { data: product, isLoading, error } = useProduct(id ?? "");
+  const { data: fetchedImage } = useProductImage(id ?? "");
+  
+  const displayImage = product?.image || fetchedImage;
 
   if (isLoading) {
     return (
-      <div className="container mx-auto flex min-h-[50vh] flex-col items-center justify-center px-4">
-        <h1 className="font-display text-2xl text-muted-foreground">Loading product details...</h1>
+      <div className="container mx-auto px-4 py-12">
+        <Skeleton className="h-4 w-32 mb-8" />
+        <div className="mt-4 grid gap-10 lg:grid-cols-2">
+          <Skeleton className="aspect-square rounded-xl" />
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-10 w-3/4" />
+              <Skeleton className="h-8 w-32" />
+            </div>
+            <Skeleton className="h-24 w-full" />
+            <div className="grid grid-cols-2 gap-3">
+              <Skeleton className="h-16 rounded-lg" />
+              <Skeleton className="h-16 rounded-lg" />
+            </div>
+            <div className="flex gap-4">
+              <Skeleton className="h-12 flex-1" />
+              <Skeleton className="h-12 flex-1" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -41,8 +64,8 @@ export default function ProductDetail() {
       </Link>
       <div className="mt-4 grid gap-10 lg:grid-cols-2">
         <div className="overflow-hidden rounded-xl border border-border bg-card">
-          {product.image ? (
-            <img src={product.image} alt={product.name} className="h-full w-full object-cover aspect-square" />
+          {displayImage ? (
+            <img src={displayImage} alt={product.name} className="h-full w-full object-cover aspect-square" />
           ) : (
             <div className="h-full w-full aspect-square flex items-center justify-center bg-secondary flex-col gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground opacity-30"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>

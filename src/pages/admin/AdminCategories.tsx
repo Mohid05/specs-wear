@@ -2,12 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { Link } from "react-router-dom";
 import { ArrowRight, Package } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminCategories() {
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ['admin-products-for-categories'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('products').select('*');
+      // Optimize: only fetch what's needed for the stats calculation
+      const { data, error } = await supabase.from('products').select('category, is_out_of_stock');
       if (error) throw error;
       return data;
     }
@@ -44,7 +46,21 @@ export default function AdminCategories() {
       
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
-          <div className="col-span-full py-8 text-center text-muted-foreground">Loading categories from database...</div>
+          <>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="rounded-xl border border-border bg-card p-6 flex flex-col space-y-4">
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-7 w-32" />
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <Skeleton className="h-4 w-28 mt-4" />
+              </div>
+            ))}
+          </>
         ) : error ? (
           <div className="col-span-full py-8 text-center text-destructive whitespace-pre-wrap">Error connecting to database: {(error as any).message}</div>
         ) : categoryCards.length === 0 ? (

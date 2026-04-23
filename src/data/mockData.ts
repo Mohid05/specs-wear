@@ -9,6 +9,7 @@ export interface Product {
   specs: { label: string; value: string }[];
   stock_quantity?: number;
   is_out_of_stock?: boolean;
+  is_featured?: boolean;
 }
 
 export const products: Product[] = [

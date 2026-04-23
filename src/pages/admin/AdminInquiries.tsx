@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { MessageSquare, Trash2, CheckCircle, Clock } from "lucide-react";
@@ -68,16 +69,55 @@ export default function AdminInquiries() {
     updateStatusMutation.mutate({ id, status: nextStatus });
   };
 
+  const [filter, setFilter] = useState<'all' | 'read' | 'unread'>('all');
+
+  const filteredMessages = messages.filter((msg: any) => {
+    if (filter === 'all') return true;
+    return msg.status === filter;
+  });
+
   return (
     <div>
       <h1 className="font-display text-2xl font-bold text-foreground">Customer Inquiries</h1>
       <p className="text-muted-foreground mt-1">Manage messages sent via the contact form</p>
 
-      <div className="mt-6 overflow-auto rounded-xl border border-border bg-card">
+      <div className="mt-6 flex items-center gap-2 mb-6">
+        <Button 
+          variant={filter === 'all' ? 'default' : 'outline'} 
+          size="sm" 
+          onClick={() => setFilter('all')}
+          className="rounded-full px-4"
+        >
+          All
+        </Button>
+        <Button 
+          variant={filter === 'unread' ? 'default' : 'outline'} 
+          size="sm" 
+          onClick={() => setFilter('unread')}
+          className="rounded-full px-4 flex gap-2"
+        >
+          Unread
+          {messages.filter((m: any) => m.status === 'unread').length > 0 && (
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+              {messages.filter((m: any) => m.status === 'unread').length}
+            </span>
+          )}
+        </Button>
+        <Button 
+          variant={filter === 'read' ? 'default' : 'outline'} 
+          size="sm" 
+          onClick={() => setFilter('read')}
+          className="rounded-full px-4"
+        >
+          Read
+        </Button>
+      </div>
+
+      <div className="overflow-auto rounded-xl border border-border bg-card">
         {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">Loading inquiries...</div>
-        ) : messages.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No inquiries found.</div>
+        ) : filteredMessages.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">No {filter !== 'all' ? filter : ''} inquiries found.</div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-secondary text-left">
@@ -90,7 +130,7 @@ export default function AdminInquiries() {
               </tr>
             </thead>
             <tbody>
-              {messages.map((msg: any) => (
+              {filteredMessages.map((msg: any) => (
                 <tr key={msg.id} className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors ${msg.status === 'unread' ? 'bg-primary/5' : ''}`}>
                   <td className="px-4 py-4 min-w-[180px]">
                     <div className="font-medium text-foreground">{msg.name}</div>

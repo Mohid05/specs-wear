@@ -39,7 +39,9 @@ const stats = [
 export default function Index() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const { data: products = [], isLoading } = useProducts();
-  const featured = products.slice(0, 4);
+  const featured = products.some(p => p.is_featured) 
+    ? products.filter(p => p.is_featured).slice(0, 4) 
+    : products.slice(0, 4);
   const nextTestimonial = () => setTestimonialIdx((i) => (i + 1) % testimonials.length);
   const prevTestimonial = () => setTestimonialIdx((i) => (i - 1 + testimonials.length) % testimonials.length);
   const t = testimonials[testimonialIdx];
@@ -185,7 +187,7 @@ export default function Index() {
               View All Collection <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`grid gap-6 sm:grid-cols-2 ${featured.length === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} justify-center`}>
             {isLoading ? (
               <div className="col-span-4 text-center text-muted-foreground py-12">Loading featured products...</div>
             ) : (

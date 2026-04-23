@@ -9,7 +9,7 @@ export const useProducts = () => {
       console.log("Fetching products from Supabase (metadata only)...");
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, category, gender, description, specs, created_at, stock_quantity, is_out_of_stock')
+        .select('id, name, price, category, gender, description, specs, created_at, stock_quantity, is_out_of_stock, is_featured')
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -48,9 +48,10 @@ export const useProduct = (id: string | number) => {
   return useQuery({
     queryKey: ['product', id],
     queryFn: async () => {
+      // Exclude 'image' from the main fetch to ensure fast loading even with old Base64 data
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('id, name, price, category, gender, description, specs, created_at, stock_quantity, is_out_of_stock')
         .eq('id', Number(id))
         .single();
       

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, ArrowLeft, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Product } from "@/data/mockData";
 
 export default function AdminProducts() {
@@ -21,13 +22,14 @@ export default function AdminProducts() {
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products-list'],
     queryFn: async () => {
+      // Optimize: Only fetch fields required for the table list
       const { data, error } = await supabase
         .from('products')
-        .select('id, name, price, category, gender, stock_quantity, is_out_of_stock, description, specs, created_at')
+        .select('id, name, price, category, gender, stock_quantity, is_out_of_stock, is_featured, created_at')
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return data as Product[];
+      return data as any as Product[];
     }
   });
 
@@ -42,6 +44,30 @@ export default function AdminProducts() {
     },
     onError: (err) => toast.error(`Error deleting product: ${err.message}`)
   });
+  
+  const toggleFeaturedMutation = useMutation({
+    mutationFn: async ({ id, isFeatured }: { id: number, isFeatured: boolean }) => {
+      const { error } = await supabase.from('products').update({ is_featured: isFeatured }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products-list'] });
+      toast.success("Featured status updated");
+    }
+  });
+
+  const handleToggleFeatured = (id: number, current: boolean) => {
+    const featuredCount = products.filter(p => p.is_featured).length;
+    if (!current && featuredCount >= 4) {
+      toast.error("You can only have a maximum of 4 featured products.");
+      return;
+    }
+    if (current && featuredCount <= 3) {
+      toast.error("You must have at least 3 featured products.");
+      return;
+    }
+    toggleFeaturedMutation.mutate({ id, isFeatured: !current });
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (product: Partial<Product>) => {
@@ -84,9 +110,21 @@ export default function AdminProducts() {
     queryKey: ['product', editingId],
     queryFn: async () => {
       if (editingId === null || editingId === 'new') return null;
-      const { data, error } = await supabase.from('products').select('*').eq('id', editingId).single();
+      // Optimize: Exclude 'image' to load metadata fast
+      const { data, error } = await supabase.from('products').select('id, name, price, category, gender, stock_quantity, is_out_of_stock, is_featured, description, specs, created_at').eq('id', editingId).single();
       if (error) throw error;
       return data as Product;
+    },
+    enabled: editingId !== null && editingId !== 'new'
+  });
+
+  const { data: editingImage } = useQuery({
+    queryKey: ['product-image', editingId],
+    queryFn: async () => {
+      if (editingId === null || editingId === 'new') return null;
+      const { data, error } = await supabase.from('products').select('image').eq('id', editingId).single();
+      if (error) throw error;
+      return data.image as string;
     },
     enabled: editingId !== null && editingId !== 'new'
   });
@@ -95,6 +133,8 @@ export default function AdminProducts() {
     const product = editingId === 'new' 
       ? { name: '', price: 0, category: 'frames', gender: 'unisex', image: '', description: '', stock_quantity: 10, is_out_of_stock: false, specs: [] } as Partial<Product>
       : fullProduct || (products.find(p => p.id === editingId) || {} as Partial<Product>);
+    
+    const displayImage = (product as any).image || editingImage;
 
     if (editingId !== 'new' && isFetchingFull) {
         return <div className="p-12 text-center">Loading product data...</div>;
@@ -103,25 +143,58 @@ export default function AdminProducts() {
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       if (isProcessing) return;
-      setIsProcessing(true);
 
       const fd = new FormData(e.currentTarget);
+      const isFeatured = fd.get('is_featured') === 'true';
+
+      // Validate featured count on save
+      const currentFeaturedCount = products.filter(p => p.is_featured).length;
+      const isCurrentlyFeatured = (product as any).is_featured;
+
+      if (isFeatured && !isCurrentlyFeatured && currentFeaturedCount >= 4) {
+        toast.error("You already have 4 featured products. Unfeature one before featuring this one.");
+        return;
+      }
+      if (!isFeatured && isCurrentlyFeatured && currentFeaturedCount <= 3) {
+        toast.error("You must have at least 3 featured products. Please feature another one first.");
+        return;
+      }
+
+      setIsProcessing(true);
+      
       const stockVal = Math.max(0, Number(fd.get('stock'))); // prevent negative
       const isManualOutOfStock = fd.get('outOfStock') === 'true';
 
-      // Advanced Image Handling (Base64)
-      let finalImage = product.image || ""; // Truly blank fallback
+      // Advanced Image Handling (Supabase Storage)
+      let finalImage = (product as any).image || "";
       const imageFile = fd.get('imageFile') as File;
       
       if (imageFile && imageFile.size > 0) {
-        // Convert the local file into a Base64 string to securely save in the database
-        const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
-        });
-        finalImage = await toBase64(imageFile);
+        setIsProcessing(true);
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        const filePath = `product-images/${fileName}`;
+
+        console.log("Uploading image to Supabase Storage:", filePath);
+        
+        const { error: uploadError, data } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          toast.error(`Image upload failed: ${uploadError.message}`);
+          setIsProcessing(false);
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+        
+        finalImage = publicUrl;
       } else if (removeImage) {
         finalImage = "";
       }
@@ -144,6 +217,7 @@ export default function AdminProducts() {
         description: fd.get('description') as string,
         stock_quantity: stockVal,
         is_out_of_stock: stockVal === 0 ? true : isManualOutOfStock,
+        is_featured: fd.get('is_featured') === 'true',
         specs: specs
       });
       setIsProcessing(false);
@@ -195,6 +269,26 @@ export default function AdminProducts() {
               <select name="outOfStock" defaultValue={product.is_out_of_stock ? 'true' : 'false'} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                 <option value="false">In Stock</option>
                 <option value="true">Out of Stock</option>
+              </select>
+            </div>
+            <div className="space-y-2 col-span-2 sm:col-span-1">
+              <label className="text-sm font-medium">Is Featured (Exactly 4 total)</label>
+              <select 
+                name="is_featured" 
+                defaultValue={product.is_featured ? 'true' : 'false'} 
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                onChange={(e) => {
+                  if (e.target.value === 'true') {
+                    const featuredCount = products.filter(p => p.is_featured && p.id !== editingId).length;
+                    if (featuredCount >= 4) {
+                      toast.error("You can only have exactly 4 featured products. Please unfeature another product first.");
+                      e.target.value = 'false';
+                    }
+                  }
+                }}
+              >
+                <option value="false">No</option>
+                <option value="true">Yes</option>
               </select>
             </div>
             
@@ -280,7 +374,43 @@ export default function AdminProducts() {
       </div>
       <div className="mt-6 overflow-auto rounded-xl border border-border">
         {isLoading ? (
-          <div className="p-8 text-center text-muted-foreground">Loading products from database...</div>
+          <div className="w-full">
+            <table className="w-full text-sm">
+              <thead className="border-b border-border bg-secondary text-left">
+                <tr>
+                  <th className="px-4 py-3 font-medium text-muted-foreground w-16">Image</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Name</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Stock / Status</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground">Price</th>
+                  <th className="px-4 py-3 font-medium text-muted-foreground w-20">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <tr key={i} className="border-b border-border last:border-0 hover:bg-secondary/50">
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-10 w-10 rounded" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-40" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-24" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Skeleton className="h-4 w-20" />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="h-4 w-4" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-secondary text-left">
@@ -288,6 +418,7 @@ export default function AdminProducts() {
                 <th className="px-4 py-3 font-medium text-muted-foreground">Image</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Name</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Stock / Status</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Featured</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Price</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -309,6 +440,19 @@ export default function AdminProducts() {
                     ) : (
                       <span className="text-muted-foreground">{p.stock_quantity ?? 10} in stock</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button 
+                      onClick={() => handleToggleFeatured(p.id, p.is_featured)}
+                      disabled={toggleFeaturedMutation.isPending}
+                      className={`font-bold px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider border transition-colors ${
+                        p.is_featured 
+                          ? "bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200" 
+                          : "text-muted-foreground/40 border-transparent hover:border-border"
+                      }`}
+                    >
+                      {p.is_featured ? 'Featured' : 'No'}
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-primary font-medium">Rs. {p.price.toLocaleString()}</td>
                   <td className="px-4 py-3">

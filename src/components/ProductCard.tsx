@@ -4,6 +4,7 @@ import type { Product } from "@/data/mockData";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
 import { useProductImage } from "@/hooks/useProducts";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
@@ -17,9 +18,7 @@ export default function ProductCard({ product }: { product: Product }) {
     >
       <div className="relative aspect-square overflow-hidden bg-secondary">
         {imageLoading && !product.image ? (
-          <div className="h-full w-full flex items-center justify-center bg-secondary">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
+          <Skeleton className="h-full w-full" />
         ) : displayImage ? (
           <img
             src={displayImage}
