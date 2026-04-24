@@ -6,6 +6,8 @@ import ProductCard from "@/components/ProductCard";
 import { useProducts } from "@/hooks/useProducts";
 import PageHero from "@/components/PageHero";
 import catalogHero from "@/assets/catalog-hero.png";
+import { motion, AnimatePresence } from "framer-motion";
+
 
 export default function Catalog() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -138,10 +140,25 @@ export default function Catalog() {
       ) : filtered.length === 0 ? (
         <p className="mt-16 text-center text-muted-foreground">No products found matching your criteria.</p>
       ) : (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((p) => <ProductCard key={p.id} product={p} />)}
-        </div>
+        <motion.div layout className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((p) => (
+              <motion.div
+                key={p.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="h-full"
+              >
+                <ProductCard product={p} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
+
       </div>
     </div>
   );
