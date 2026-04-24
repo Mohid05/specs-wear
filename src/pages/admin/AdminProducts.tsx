@@ -115,7 +115,14 @@ export default function AdminProducts() {
       setEditingId(null);
       toast.success(`Product ${editingId === 'new' ? 'added' : 'updated'} successfully`);
     },
-    onError: (err) => toast.error(`Error saving product: ${err.message}`)
+    onError: (err) => {
+      console.error("Save error:", err);
+      if (err.message?.includes('unique constraint "products_pkey"')) {
+        toast.error("Database ID sequence out of sync. Please run the SQL fix in your Supabase Dashboard (see instructions).");
+      } else {
+        toast.error(`Error saving product: ${err.message}`);
+      }
+    }
   });
 
   const handleDelete = (id: number) => {

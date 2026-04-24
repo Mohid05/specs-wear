@@ -51,8 +51,8 @@ export default function Navbar() {
 
   return (
     <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "border-b border-border bg-[var(--nav-bg)]/95 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-[var(--nav-bg)]/80" : "bg-[var(--nav-bg)] md:bg-transparent"}`}>
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 lg:h-20">
-        <Link to="/" className="flex items-center gap-2">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:h-20">
+        <Link to="/" className="flex items-center gap-2 overflow-visible">
           <SpecsLogo />
         </Link>
 

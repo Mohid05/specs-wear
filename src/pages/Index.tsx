@@ -73,7 +73,7 @@ export default function Index() {
                 Premium Eyewear Since 2010
               </span>
             </div>
-            <h1 className="font-display text-5xl font-bold leading-[1.1] md:text-7xl lg:text-8xl">
+            <h1 className="font-display text-4xl font-bold leading-[1.1] sm:text-5xl md:text-7xl lg:text-8xl">
               <span className="text-gradient-gold">See Clear.</span>
               <br />
               <span className="text-white">Look Sharp.</span>
