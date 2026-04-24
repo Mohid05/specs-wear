@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { formatWhatsAppNumber } from "@/lib/utils";
 
-type OrderStatus = 'pending' | 'shipped' | 'delivered';
+type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'bookings';
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -74,6 +74,8 @@ export default function AdminDashboard() {
   const dispatchedCount = orders.filter((o: any) => o.status === 'shipped').length;
   const successfulCount = orders.filter((o: any) => o.status === 'delivered').length;
   const newInquiries = inquiries.length;
+  const pendingBookingsCount = orders.filter((o: any) => o.is_booking).length;
+  const restockedOrders = orders.filter((o: any) => o.needs_restock_notification);
   
   // Revenue is only from delivered (Successful) orders
   const totalRevenue = orders
@@ -130,6 +132,20 @@ export default function AdminDashboard() {
     },
     onError: (err) => {
       toast.error(`Error deleting order: ${err.message}`);
+    }
+  });
+
+  const resolveNotificationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('orders')
+        .update({ needs_restock_notification: false })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      toast.success("Notification dismissed!");
     }
   });
 
@@ -221,8 +237,9 @@ export default function AdminDashboard() {
   };
 
   const filteredOrders = orders.filter((o: any) => {
-    if (activeTab === 'pending') return o.status === 'pending' || !o.status;
-    return o.status === activeTab;
+    if (activeTab === 'bookings') return o.is_booking === true;
+    if (activeTab === 'pending') return (o.status === 'pending' || !o.status) && !o.is_booking;
+    return o.status === activeTab && !o.is_booking;
   });
 
   return (
@@ -255,6 +272,15 @@ export default function AdminDashboard() {
           <p className="mt-2 text-3xl font-bold text-foreground">{newInquiries}</p>
         </div>
 
+        <div className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-amber-500">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground font-medium">Pending Bookings</p>
+            <Package className="h-5 w-5 text-amber-500" />
+          </div>
+          <p className="mt-2 text-3xl font-bold text-amber-600 dark:text-amber-400">{pendingBookingsCount}</p>
+          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">Out of stock items</p>
+        </div>
+
         <div className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-green-500">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground font-medium">Total Earnings</p>
@@ -276,6 +302,12 @@ export default function AdminDashboard() {
               Pending
             </button>
             <button 
+              onClick={() => setActiveTab('bookings')}
+              className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'bookings' ? 'bg-background text-amber-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              Bookings
+            </button>
+            <button 
               onClick={() => setActiveTab('shipped')}
               className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'shipped' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
             >
@@ -290,6 +322,46 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {restockedOrders.length > 0 && (
+        <div className="mt-6 p-4 rounded-xl border border-amber-500 bg-amber-500/10 text-amber-800 dark:text-amber-200 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            <h3 className="font-bold text-lg">Restocked Bookings Alert</h3>
+          </div>
+          <p className="text-sm mb-4">You have {restockedOrders.length} booking(s) that were just restocked! They have been moved to Pending Orders. Please notify the customers.</p>
+          <div className="flex flex-col gap-2">
+            {restockedOrders.map((o: any) => (
+              <div key={o.id} className="flex items-center justify-between bg-background/50 p-3 rounded-lg border border-amber-500/20">
+                <div>
+                  <p className="font-semibold">{o.customer_name}</p>
+                  <p className="text-xs opacity-70">Order ID: {o.id.split('-')[0]}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    className="bg-amber-600 hover:bg-amber-700 text-white gap-2 font-semibold"
+                    onClick={() => {
+                      const msg = encodeURIComponent(`Hello ${o.customer_name}! The items you booked from SPECS WEAR have been restocked. We are now processing your order (Ref: ${o.id.split('-')[0]}). We will dispatch it shortly!`);
+                      window.open(`https://wa.me/${formatWhatsAppNumber(o.customer_phone)}?text=${msg}`, "_blank");
+                    }}
+                  >
+                    <MessageSquare className="h-4 w-4" /> Message
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="border-amber-500/50 text-amber-700 hover:bg-amber-500/20"
+                    onClick={() => resolveNotificationMutation.mutate(o.id)}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 overflow-auto rounded-xl border border-border bg-card shadow-sm">
         {isLoading ? (
@@ -340,7 +412,26 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
-                       {order.status === 'pending' || !order.status ? (
+                       {activeTab === 'bookings' ? (
+                          <>
+                           <Button 
+                             size="sm" 
+                             variant="outline" 
+                             className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 gap-1.5 h-8 font-semibold transition-colors"
+                             onClick={() => handleWhatsApp(order)}
+                           >
+                             <MessageSquare className="h-3.5 w-3.5" /> WhatsApp Customer
+                           </Button>
+                           <Button 
+                             size="sm" 
+                             variant="ghost"
+                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-semibold"
+                             onClick={() => handleCancel(order.id, order.customer_name)}
+                           >
+                             <Trash2 className="h-3.5 w-3.5" />
+                           </Button>
+                          </>
+                       ) : order.status === 'pending' || !order.status ? (
                          <>
                           <Button 
                             size="sm" 
@@ -431,10 +522,10 @@ export default function AdminDashboard() {
             <DialogTitle className="text-2xl font-bold flex items-center justify-between">
               Order Details
               <Badge 
-                variant={selectedOrder?.status === 'pending' ? 'secondary' : selectedOrder?.status === 'shipped' ? 'default' : 'outline'} 
-                className={`ml-4 capitalize ${selectedOrder?.status === 'shipped' ? 'bg-blue-500 hover:bg-blue-600' : selectedOrder?.status === 'delivered' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
+                variant={selectedOrder?.is_booking ? 'destructive' : selectedOrder?.status === 'pending' ? 'secondary' : selectedOrder?.status === 'shipped' ? 'default' : 'outline'} 
+                className={`ml-4 capitalize ${selectedOrder?.is_booking ? 'bg-amber-500 hover:bg-amber-600 text-white' : selectedOrder?.status === 'shipped' ? 'bg-blue-500 hover:bg-blue-600' : selectedOrder?.status === 'delivered' ? 'bg-green-500 hover:bg-green-600 text-white' : ''}`}
               >
-                {selectedOrder?.status === 'shipped' ? 'Dispatched' : selectedOrder?.status === 'delivered' ? 'Successful' : (selectedOrder?.status || 'Processing')}
+                {selectedOrder?.is_booking ? 'Booking (Out of Stock)' : selectedOrder?.status === 'shipped' ? 'Dispatched' : selectedOrder?.status === 'delivered' ? 'Successful' : (selectedOrder?.status || 'Processing')}
               </Badge>
             </DialogTitle>
             <DialogDescription>
@@ -520,7 +611,7 @@ export default function AdminDashboard() {
               <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <Button variant="outline" onClick={() => setIsModalOpen(false)}>Close</Button>
                 
-                {(!selectedOrder.status || selectedOrder.status === 'pending') && (
+                {(!selectedOrder.is_booking && (!selectedOrder.status || selectedOrder.status === 'pending')) && (
                   <Button 
                     className="bg-primary text-primary-foreground gap-1.5 hover:opacity-90"
                     onClick={() => {

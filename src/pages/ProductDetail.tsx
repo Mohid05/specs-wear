@@ -77,8 +77,8 @@ export default function ProductDetail() {
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">{product.category}</span>
             {product.is_out_of_stock ? (
-              <span className="inline-block rounded-full bg-red-600/10 px-2.5 py-0.5 text-xs font-semibold text-red-600">
-                Out of Stock
+              <span className="inline-block rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                Out of Stock (Booking Open)
               </span>
             ) : product.stock_quantity !== undefined && (
               <span className="inline-block rounded-full bg-green-600/10 px-2.5 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">
@@ -103,14 +103,13 @@ export default function ProductDetail() {
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <Button 
               size="lg" 
-              disabled={product.is_out_of_stock}
-              className="flex-1 bg-primary text-primary-foreground shadow-sm gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 shadow-sm gap-2 hover:opacity-90 ${product.is_out_of_stock ? 'bg-amber-600 hover:bg-amber-700' : 'bg-primary text-primary-foreground'}`}
               onClick={() => {
                 addToCart(product);
-                toast.success(`${product.name} added to cart!`);
+                toast.success(`${product.name} ${product.is_out_of_stock ? 'added to bookings' : 'added to cart'}!`);
               }}
             >
-              <ShoppingCart className="h-5 w-5" /> {product.is_out_of_stock ? "Out of Stock" : "Add to Cart"}
+              <ShoppingCart className="h-5 w-5" /> {product.is_out_of_stock ? "Book Now" : "Add to Cart"}
             </Button>
             <a href={`https://wa.me/${storeInfo.whatsapp}?text=${whatsappMsg}`} target="_blank" rel="noopener noreferrer" className="flex-1">
               <Button size="lg" variant="outline" className="w-full border-primary/30 text-foreground hover:bg-[#15a349] hover:text-white hover:border-[#15a349] gap-2 transition-colors">

@@ -15,6 +15,7 @@ export default function Checkout() {
   const [isCODChecked, setIsCODChecked] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
   const [customerData, setCustomerData] = useState<any>(null);
+  const isBookingOrder = items.some(item => item.is_out_of_stock);
   const shippingFee = 200;
   const finalTotal = cartTotal + shippingFee;
 
@@ -68,7 +69,8 @@ export default function Checkout() {
           customer_phone: customerPhone,
           shipping_address: shippingAddress,
           total_amount: finalTotal,
-          status: 'pending'
+          status: 'pending',
+          is_booking: isBookingOrder
         })
         .select('id')
         .single();
@@ -105,9 +107,13 @@ export default function Checkout() {
         <div className="rounded-full bg-primary/10 p-6 mb-6">
           <CheckCircle2 className="h-16 w-16 text-primary" />
         </div>
-        <h1 className="font-display text-4xl font-bold text-foreground mb-4">Order Confirmed!</h1>
+        <h1 className="font-display text-4xl font-bold text-foreground mb-4">
+          {isBookingOrder ? "Booking Confirmed!" : "Order Confirmed!"}
+        </h1>
         <p className="text-muted-foreground max-w-md mx-auto mb-8">
-          Thank you for your purchase. We've received your order and will contact you via WhatsApp shortly to coordinate delivery.
+          {isBookingOrder 
+            ? "Thank you for your booking. Your item will be processed as soon as it is restocked. We will notify you via WhatsApp!"
+            : "Thank you for your purchase. We've received your order and will contact you via WhatsApp shortly to coordinate delivery."}
         </p>
         <Link to="/catalog">
           <Button className="bg-gradient-gold shadow-gold">Continue Shopping</Button>
@@ -299,7 +305,11 @@ export default function Checkout() {
                       <h3 className="font-semibold">{item.name}</h3>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm text-muted-foreground capitalize">{item.category}</p>
-                        {item.stock_quantity !== undefined && (
+                        {item.is_out_of_stock ? (
+                          <span className="inline-block rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Booking Pre-order
+                          </span>
+                        ) : item.stock_quantity !== undefined && (
                           <span className="inline-block rounded-full bg-green-600/10 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:text-green-400">
                             {item.stock_quantity} left
                           </span>
@@ -386,7 +396,7 @@ export default function Checkout() {
                 className="w-full bg-gradient-gold shadow-gold text-lg h-12"
                 disabled={isSubmitting || !isCODChecked}
               >
-                {isSubmitting ? "Processing..." : "Place Order"}
+                {isSubmitting ? "Processing..." : isBookingOrder ? "Place Booking" : "Place Order"}
               </Button>
               <p className="text-xs text-center text-muted-foreground mt-4">
                 By placing your order, you agree to our Terms of Service.

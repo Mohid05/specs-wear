@@ -46,8 +46,8 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.category}
           </span>
           {product.is_out_of_stock && (
-            <span className="rounded-full bg-destructive/90 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-destructive-foreground backdrop-blur-sm shadow-sm ring-1 ring-destructive/20">
-              Out of Stock
+            <span className="rounded-full bg-amber-500/90 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white backdrop-blur-sm shadow-sm ring-1 ring-amber-500/20">
+              Booking Open
             </span>
           )}
         </div>
@@ -65,20 +65,20 @@ export default function ProductCard({ product }: { product: Product }) {
           <button 
             onClick={(e) => {
               e.preventDefault();
-              if (product.is_out_of_stock) return;
               addToCart(product);
-              toast.success(`${product.name} added to cart!`);
+              toast.success(`${product.name} ${product.is_out_of_stock ? 'added as booking' : 'added to cart'}!`);
             }}
-            disabled={product.is_out_of_stock}
             className={`relative z-30 flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
               product.is_out_of_stock 
-                ? "bg-secondary/50 text-muted-foreground cursor-not-allowed opacity-50" 
+                ? "bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white" 
                 : "bg-secondary hover:bg-primary text-foreground hover:text-primary-foreground hover:shadow-lg hover:-translate-y-1"
             }`}
-            aria-label="Add to cart"
+            title={product.is_out_of_stock ? "Book Now" : "Add to cart"}
+            aria-label={product.is_out_of_stock ? "Book Now" : "Add to cart"}
           >
             <ShoppingCart className="h-5 w-5" />
           </button>
+
         </div>
       </div>
     </Link>
