@@ -91,6 +91,19 @@ export default function Checkout() {
 
       if (itemsError) throw itemsError;
 
+      // 3. Decrement stock for all in-stock items
+      for (const item of items) {
+        if (!item.is_out_of_stock) {
+          const { data: currentProduct } = await supabase.from('products').select('stock_quantity').eq('id', item.id).single();
+          const currentQty = currentProduct?.stock_quantity || 0;
+          const newStock = Math.max(0, currentQty - item.quantity);
+          await supabase.from('products').update({
+            stock_quantity: newStock,
+            is_out_of_stock: newStock === 0
+          }).eq('id', item.id);
+        }
+      }
+
       setOrderComplete(true);
       clearCart();
       toast.success("Order placed successfully!");

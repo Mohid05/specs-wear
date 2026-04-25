@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Package, Tags, MessageSquare, Image, Settings, Users, Menu, X, LogOut, ArrowLeft, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, Package, Tags, MessageSquare, Image, Settings, Users, Menu, X, LogOut, ArrowLeft, Sun, Moon, Bookmark } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import SpecsLogo from "@/components/SpecsLogo";
 
 const adminLinks = [
   { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
+  { label: "Bookings", path: "/admin/bookings", icon: Bookmark },
   { label: "Products", path: "/admin/products", icon: Package },
   { label: "Categories", path: "/admin/categories", icon: Tags },
   { label: "Inquiries", path: "/admin/inquiries", icon: MessageSquare },
@@ -39,6 +40,23 @@ export default function AdminLayout() {
   });
 
   const unreadCount = unreadInquiries.length;
+
+  // Fetch pending bookings list
+  const { data: pendingBookings = [] } = useQuery({
+    queryKey: ['admin-bookings-count'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('is_booking', true);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
+
+  const pendingBookingsCount = pendingBookings.length;
 
   const isAdmin = localStorage.getItem("isAdmin") === "true";
 
@@ -132,6 +150,9 @@ export default function AdminLayout() {
                 <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shadow-sm">
                   {unreadCount}
                 </span>
+              )}
+              {l.label === "Bookings" && pendingBookingsCount > 0 && (
+                <span className="ml-auto flex h-3 w-3 items-center justify-center rounded-full bg-amber-500 shadow-sm animate-pulse" title={`${pendingBookingsCount} pending bookings`} />
               )}
             </Link>
           ))}

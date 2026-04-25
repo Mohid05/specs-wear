@@ -13,8 +13,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { formatWhatsAppNumber } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
-type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'bookings';
+type OrderStatus = 'pending' | 'shipped' | 'delivered';
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -237,7 +238,6 @@ export default function AdminDashboard() {
   };
 
   const filteredOrders = orders.filter((o: any) => {
-    if (activeTab === 'bookings') return o.is_booking === true;
     if (activeTab === 'pending') return (o.status === 'pending' || !o.status) && !o.is_booking;
     return o.status === activeTab && !o.is_booking;
   });
@@ -272,14 +272,16 @@ export default function AdminDashboard() {
           <p className="mt-2 text-3xl font-bold text-foreground">{newInquiries}</p>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-amber-500">
+
+
+        <Link to="/admin/bookings" className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-amber-500 hover:bg-secondary/50 transition-colors block">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground font-medium">Pending Bookings</p>
             <Package className="h-5 w-5 text-amber-500" />
           </div>
           <p className="mt-2 text-3xl font-bold text-amber-600 dark:text-amber-400">{pendingBookingsCount}</p>
-          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">Out of stock items</p>
-        </div>
+          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">Click to view</p>
+        </Link>
 
         <div className="rounded-xl border border-border bg-card p-6 border-l-4 border-l-green-500">
           <div className="flex items-center justify-between">
@@ -287,7 +289,7 @@ export default function AdminDashboard() {
             <TrendingUpIcon className="h-5 w-5 text-green-500" />
           </div>
           <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">Rs. {totalRevenue.toLocaleString()}</p>
-          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">From dispatched orders</p>
+          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider font-semibold">From successful orders</p>
         </div>
       </div>
 
@@ -301,12 +303,7 @@ export default function AdminDashboard() {
             >
               Pending
             </button>
-            <button 
-              onClick={() => setActiveTab('bookings')}
-              className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'bookings' ? 'bg-background text-amber-500 shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              Bookings
-            </button>
+
             <button 
               onClick={() => setActiveTab('shipped')}
               className={`px-4 py-1.5 text-sm font-medium transition-all rounded-md ${activeTab === 'shipped' ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
@@ -412,26 +409,7 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
                     <div className="flex gap-2">
-                       {activeTab === 'bookings' ? (
-                          <>
-                           <Button 
-                             size="sm" 
-                             variant="outline" 
-                             className="bg-green-50 text-green-600 border-green-200 hover:bg-[#15a349] hover:text-white hover:border-[#15a349] dark:bg-green-900/10 dark:border-green-800 dark:text-green-400 gap-1.5 h-8 font-semibold transition-colors"
-                             onClick={() => handleWhatsApp(order)}
-                           >
-                             <MessageSquare className="h-3.5 w-3.5" /> WhatsApp Customer
-                           </Button>
-                           <Button 
-                             size="sm" 
-                             variant="ghost"
-                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 font-semibold"
-                             onClick={() => handleCancel(order.id, order.customer_name)}
-                           >
-                             <Trash2 className="h-3.5 w-3.5" />
-                           </Button>
-                          </>
-                       ) : order.status === 'pending' || !order.status ? (
+                       {order.status === 'pending' || !order.status ? (
                          <>
                           <Button 
                             size="sm" 
