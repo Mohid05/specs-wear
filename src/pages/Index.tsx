@@ -31,7 +31,7 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
 
 const stats = [
   { icon: Users, value: "5,000+", label: "Happy Customers" },
-  { icon: Award, value: "15+", label: "Years Experience" },
+  { icon: Award, value: "5+", label: "Years Experience" },
   { icon: Shield, value: "100%", label: "Genuine Products" },
   { icon: Eye, value: "50+", label: "Brand Collection" },
 ];
@@ -39,8 +39,8 @@ const stats = [
 export default function Index() {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   const { data: products = [], isLoading } = useProducts();
-  const featured = products.some(p => p.is_featured) 
-    ? products.filter(p => p.is_featured).slice(0, 4) 
+  const featured = products.some(p => p.is_featured)
+    ? products.filter(p => p.is_featured).slice(0, 4)
     : products.slice(0, 4);
   const nextTestimonial = () => setTestimonialIdx((i) => (i + 1) % testimonials.length);
   const prevTestimonial = () => setTestimonialIdx((i) => (i - 1 + testimonials.length) % testimonials.length);
